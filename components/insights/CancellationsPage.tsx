@@ -71,18 +71,6 @@ function FocusInsightCard({ kind }: { kind: FocusKind }) {
         </div>
         <h3 className="mt-3 text-[18px] font-semibold tracking-tight">{f.title}</h3>
         <p className="mt-2 text-[14.5px] leading-relaxed text-ink-2"><RichText text={f.text} /></p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {f.focusState && (
-            <Link href={`/states/${stateSlug(f.focusState)}?month=${month}`} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-panel px-3.5 text-[12.5px] font-semibold text-white transition hover:bg-panel-2">
-              Focus state: {f.focusState} <ArrowUpRight className="size-3.5" />
-            </Link>
-          )}
-          {f.focusChannel && (
-            <Link href={`/channels/${stateSlug(f.focusChannel)}?month=${month}`} className="inline-flex h-9 items-center gap-1.5 rounded-full border border-line bg-card px-3.5 text-[12.5px] font-semibold transition hover:border-ink">
-              Focus channel: {f.focusChannel} <ArrowUpRight className="size-3.5" />
-            </Link>
-          )}
-        </div>
       </div>
       <div>
         <div className="mb-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-mute">
@@ -203,7 +191,7 @@ function TimingView({ initialBucket }: { initialBucket: OddBucket | null }) {
               <Tooltip content={({ active, payload, label }) => (active && payload?.length ? <TipCard title={String(label)} rows={payload.map((q) => ({ label: String(q.name), value: fmtPct(Number(q.value)), color: String(q.color) }))} /> : null)} />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
               {shown.map((b) => (
-                <Area key={b.id} type="monotone" dataKey={b.id} name={ODD_NAMES[b.id]} stroke={b.id === "on" ? "#e0a800" : ODD_COLORS[b.id]} strokeWidth={b.id === "post" ? 2.75 : 2.25} fill={`url(#odd-${b.id})`} dot={{ r: 3, fill: C.card, strokeWidth: 2 }} animationDuration={600} />
+                <Area isAnimationActive key={b.id} type="monotone" dataKey={b.id} name={ODD_NAMES[b.id]} stroke={b.id === "on" ? "#e0a800" : ODD_COLORS[b.id]} strokeWidth={b.id === "post" ? 2.75 : 2.25} fill={`url(#odd-${b.id})`} dot={{ r: 3, fill: C.card, strokeWidth: 2 }} animationDuration={600} />
               ))}
             </AreaChart>
           </ResponsiveContainer>
@@ -334,9 +322,9 @@ function ClassView() {
               <YAxis {...axisProps} width={44} domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} />
               <Tooltip content={({ active, payload, label }) => (active && payload?.length ? <TipCard title={String(label)} rows={payload.map((q) => ({ label: String(q.name), value: fmtPct(Number(q.value)), color: String(q.color) }))} /> : null)} />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
-              <Line type="monotone" dataKey="Customer Miss" stroke={CLASS_COLORS.cust} strokeWidth={2.75} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="Company Miss" stroke={CLASS_COLORS.co} strokeWidth={2.25} dot={false} />
-              <Line type="monotone" dataKey="Faux" stroke={CLASS_COLORS.faux} strokeWidth={2} dot={false} />
+              <Line isAnimationActive type="monotone" dataKey="Customer Miss" stroke={CLASS_COLORS.cust} strokeWidth={2.75} dot={{ r: 3 }} />
+              <Line isAnimationActive type="monotone" dataKey="Company Miss" stroke={CLASS_COLORS.co} strokeWidth={2.25} dot={false} />
+              <Line isAnimationActive type="monotone" dataKey="Faux" stroke={CLASS_COLORS.faux} strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

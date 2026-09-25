@@ -97,7 +97,7 @@ export function WatchtowerPage() {
                       key ? "border-panel bg-panel text-white" : "border-line bg-card",
                     )}
                   >
-                    {key && <div className="bs-gradient pointer-events-none absolute -right-8 -top-8 size-28 rounded-full opacity-30 blur-2xl" />}
+                    {key && <div className="glow pointer-events-none absolute -right-12 -top-12 size-40" />}
                     <div className="relative flex min-h-[32px] items-start justify-between gap-2">
                       <div className={cn("text-[12px] font-semibold leading-tight", key ? "text-white/70" : "text-mute")}>{s.label}</div>
                       {key && <Badge tone="brand" className="!px-1.5 !py-0 text-[9.5px]">LEADING</Badge>}

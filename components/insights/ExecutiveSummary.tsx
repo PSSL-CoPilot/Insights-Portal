@@ -26,7 +26,7 @@ export function ExecutiveSummary() {
   return (
     <section aria-labelledby="exec-summary">
       <Card className="relative overflow-hidden">
-        <div className="bs-gradient pointer-events-none absolute -right-24 -top-24 size-72 rounded-full opacity-20 blur-3xl" />
+        <div className="glow pointer-events-none absolute -right-32 -top-32 size-[28rem] opacity-60" />
         <div className="relative grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(340px,30%)]">
           <div className="p-6 sm:p-8 xl:px-10">
             <div className="flex flex-wrap items-center gap-2.5">

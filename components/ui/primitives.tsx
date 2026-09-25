@@ -15,7 +15,7 @@ export function Card({ className, children, interactive, ...rest }: { className?
       {...rest}
       className={cn(
         "rounded-[18px] border border-line bg-card shadow-card",
-        interactive && "transition-[transform,box-shadow,border-color] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-1 hover:border-line hover:shadow-pop cursor-pointer",
+        interactive && "transition-transform duration-300 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-1 hover:border-line hover:shadow-pop cursor-pointer",
         className,
       )}
     >

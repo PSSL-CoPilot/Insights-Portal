@@ -47,14 +47,14 @@ export function KPICard({
       onClick={onClick}
       style={{ animationDelay: `${delay}ms` }}
       className={cn(
-        "group relative flex min-h-[158px] animate-rise flex-col justify-between overflow-hidden rounded-[18px] border p-4 text-left shadow-card transition-[transform,box-shadow,border-color] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-1 hover:shadow-pop focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
+        "group relative flex min-h-[158px] animate-rise flex-col justify-between overflow-hidden rounded-[18px] border p-4 text-left shadow-card transition-transform duration-300 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-1 hover:shadow-pop focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
         spotlight ? "border-panel bg-panel text-white" : a.status === "critical" ? "border-bad/40 bg-card" : "border-line bg-card hover:border-soft",
         selected && "ring-2 ring-brand",
         unavailable && "opacity-70",
       )}
       aria-label={`${def.label}: ${formatKpiValue(def, value)}. Open deep dive.`}
     >
-      {spotlight && <div className="bs-gradient pointer-events-none absolute -right-10 -top-10 size-32 rounded-full opacity-30 blur-2xl" />}
+      {spotlight && <div className="glow pointer-events-none absolute -right-14 -top-14 size-44" />}
       <div className="relative flex items-start justify-between gap-2">
         <div className={cn("text-[12px] font-semibold leading-tight", spotlight ? "text-white/70" : "text-mute")}>{def.label}</div>
         {a.anomaly && a.status !== "neutral" && (

@@ -17,7 +17,7 @@ export function Donut({ data, size = 200, center, thickness = 26 }: { data: Slic
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" innerRadius={size / 2 - thickness} outerRadius={size / 2 - 2} paddingAngle={2} startAngle={90} endAngle={-270} stroke="none" cornerRadius={6} animationDuration={700}>
+          <Pie isAnimationActive data={data} dataKey="value" nameKey="name" innerRadius={size / 2 - thickness} outerRadius={size / 2 - 2} paddingAngle={2} startAngle={90} endAngle={-270} stroke="none" cornerRadius={6} animationDuration={700}>
             {data.map((d) => (
               <Cell key={d.name} fill={d.color} />
             ))}

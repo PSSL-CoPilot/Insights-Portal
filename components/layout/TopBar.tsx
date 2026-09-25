@@ -59,7 +59,7 @@ export function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 border-b border-line/70 bg-canvas/85 backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b border-line/70 bg-canvas/95">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-3 sm:px-8 lg:h-[76px] lg:flex-nowrap lg:py-0">
         <div className="flex items-center gap-3 lg:min-w-[190px]">
           <span className="lg:hidden"><BrandMark size={30} /></span>

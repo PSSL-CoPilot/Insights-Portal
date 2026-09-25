@@ -28,7 +28,7 @@ export interface TooltipRow {
 /** Shared premium tooltip card used by every Recharts chart. */
 export function TipCard({ title, rows, note }: { title?: ReactNode; rows: TooltipRow[]; note?: ReactNode }) {
   return (
-    <div className="min-w-[170px] rounded-xl border border-line bg-card/95 px-3.5 py-2.5 text-[12px] shadow-pop backdrop-blur">
+    <div className="min-w-[170px] rounded-xl border border-line bg-card px-3.5 py-2.5 text-[12px] shadow-pop">
       {title && <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-mute">{title}</div>}
       <div className="space-y-1">
         {rows.map((r, i) => (

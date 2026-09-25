@@ -18,70 +18,42 @@ const METRICS = [
   { id: "pending", label: "Pending contact %" },
 ] as const;
 
-/**
- * State and Channel Plan: one page that tells where the problem sits (focus state, then focus channel),
- * shows where they intersect, and lets the reader switch the ranking between states and channels.
- */
-export function PlanOverview({ kind: initialKind }: { kind: PlanKind }) {
-  const { model, month, state: filterState, setState } = useApp();
+/** State and Channel Plan: states first, then channels, then where the two intersect. */
+export function PlanOverview(_: { kind: PlanKind }) {
+  const { model, month, setState } = useApp();
   const router = useRouter();
-  const [kind, setKind] = useState<PlanKind>(initialKind);
-  const [metric, setMetric] = useState<(typeof METRICS)[number]["id"]>("cancels");
-  const { rows, focus } = planRows(model, month, kind);
-  const sorted = [...rows].sort((a, b) => (b.cancelsMoM ?? -1) - (a.cancelsMoM ?? -1));
-  const d = diagnose(model, month);
-  const base = kind === "state" ? "states" : "channels";
-  const go = (name: string) => {
-    if (kind === "state") setState(name);
-    router.push(`/${base}/${stateSlug(name)}?month=${month}`);
-  };
   const open = (k: PlanKind, name: string) => {
     if (k === "state") setState(name);
     router.push(`/${k === "state" ? "states" : "channels"}/${stateSlug(name)}?month=${month}`);
   };
-  const fs = d.hotspot && (d.hotspot.cancelsMoM ?? 0) > 0.15 ? d.hotspot : null;
-  const fc = d.focusChannel && (d.focusChannel.contribution ?? 0) > 0.25 ? d.focusChannel : null;
-  const focusCards: { kind: PlanKind; name: string | null; row: typeof fs | typeof fc }[] = [
-    { kind: "state", name: fs?.state ?? null, row: fs },
-    { kind: "channel", name: fc?.channel ?? null, row: fc },
-  ];
-  const noun = kind === "state" ? "state" : "channel";
-
+  const order: PlanKind[] = ["state", "channel"];
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
       <SectionTitle
         eyebrow={`State and Channel Plan · ${monthLabel(month)}`}
         title="Where do we need a plan?"
-        sub="Start with the focus market, then the focus channel within it, then open a plan to review what changed, when, who, why and whether it could have been seen coming."
+        sub="States first, then sales channels, each ranked by cancellation growth. Select any card to open its plan."
       />
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        {focusCards.map((x, i) => (
-          <Card key={x.kind} className="flex items-center gap-4 border-brand/50 bg-brand-soft p-5">
-            <span className="bs-gradient grid size-11 shrink-0 place-items-center rounded-2xl text-[15px] font-bold text-[#111]">{i + 1}</span>
-            <div className="min-w-0 flex-1">
-              <div className="eyebrow">Focus {x.kind}</div>
-              <p className="mt-0.5 text-[14px] leading-relaxed text-ink-2">
-                {x.row ? <RichText text={`**${x.name}**: cancellations ${fmtSignedPct(x.row.cancelsMoM)}, **${fmtPct0(x.row.contribution)}** of the increase, ${fmtPct(x.row.cancelRate)} cancel rate.`} /> : `Every ${x.kind} is within its normal range in ${monthName(month)}.`}
-              </p>
-            </div>
-            {x.row && (
-              <button onClick={() => open(x.kind, x.name!)} className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-panel px-4 text-[13px] font-semibold text-white transition-transform duration-300 hover:-translate-y-0.5">
-                Open plan <ArrowUpRight className="size-4" />
-              </button>
-            )}
-          </Card>
-        ))}
-      </div>
-
+      {order.map((k) => <PlanSection key={k} kind={k} open={open} />)}
       <StateChannelMatrix onState={(s) => open("state", s)} onChannel={(c) => open("channel", c)} />
+    </div>
+  );
+}
 
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h3 className="text-[18px] font-semibold tracking-tight">All {noun}s, ranked by cancellation growth</h3>
-          <p className="text-sm text-mute">Select any {noun} to open its plan.</p>
-        </div>
-        <Tabs tabs={[{ id: "state", label: "By state" }, { id: "channel", label: "By channel" }]} value={kind} onChange={(v) => setKind(v as PlanKind)} />
+function PlanSection({ kind, open }: { kind: PlanKind; open: (k: PlanKind, name: string) => void }) {
+  const { model, month, state: filterState, setState } = useApp();
+  const [metric, setMetric] = useState<(typeof METRICS)[number]["id"]>("cancels");
+  const { rows, focus } = planRows(model, month, kind);
+  const sorted = [...rows].sort((a, b) => (b.cancelsMoM ?? -1) - (a.cancelsMoM ?? -1));
+  const go = (name: string) => open(kind, name);
+  const noun = kind === "state" ? "state" : "channel";
+  const sel = kind === "state" ? filterState : null;
+
+  return (
+    <section className="space-y-5">
+      <div>
+        <div className="eyebrow mb-1">{kind === "state" ? "By state" : "By channel"}</div>
+        <h3 className="text-[20px] font-semibold tracking-tight">All {noun}s, ranked by cancellation growth</h3>
       </div>
 
       <div className={cn("grid gap-4 sm:grid-cols-2", kind === "state" ? "xl:grid-cols-3" : "xl:grid-cols-4")}>
@@ -89,13 +61,13 @@ export function PlanOverview({ kind: initialKind }: { kind: PlanKind }) {
           const isHot = focus === r.name;
           const up = (r.cancelsMoM ?? 0) > 0.005, down = (r.cancelsMoM ?? 0) < -0.005;
           return (
-            <Card key={r.name} interactive onClick={() => go(r.name)} className={cn("group animate-rise p-5", isHot && "border-bad/40 bg-bad-soft", filterState === r.name && "ring-2 ring-brand")} style={{ animationDelay: `${i * 50}ms` }}>
+            <Card key={r.name} interactive onClick={() => go(r.name)} className={cn("group animate-rise p-5", isHot && "border-bad/40 bg-bad-soft", sel === r.name && "ring-2 ring-brand")} style={{ animationDelay: `${i * 50}ms` }}>
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2 text-[17px] font-semibold">{r.name}{isHot && <Badge tone="bad">FOCUS</Badge>}</div>
                   <div className="mt-0.5 text-xs text-mute">{fmtInt(r.sales)} sales · {fmtInt(r.installs)} installs</div>
                 </div>
-                <span className="grid size-8 place-items-center rounded-full bg-subtle text-mute transition group-hover:bg-panel group-hover:text-white"><ArrowUpRight className="size-4" /></span>
+                <span className="grid size-8 place-items-center rounded-full bg-subtle text-mute transition-colors group-hover:bg-panel group-hover:text-white"><ArrowUpRight className="size-4" /></span>
               </div>
               <div className="mt-5 flex items-end justify-between">
                 <div>
@@ -114,22 +86,23 @@ export function PlanOverview({ kind: initialKind }: { kind: PlanKind }) {
         })}
       </div>
 
-      <Card className="p-5 sm:p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-[15px] font-semibold">Compare {noun}s</div>
-          <Tabs tabs={METRICS.map((m) => ({ id: m.id, label: m.label }))} value={metric} onChange={setMetric} size="sm" />
-        </div>
-        <StateRanking model={model} month={month} def={kpiById(metric)!} selectedState={kind === "state" ? filterState : null} onSelect={go} kind={kind} />
-      </Card>
-
-      <Card className="p-5 sm:p-6">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="text-[15px] font-semibold">{kind === "state" ? "State" : "Channel"} detail</div>
-          {kind === "state" && filterState && <button onClick={() => setState(null)} className="text-xs font-semibold text-mute underline">Clear state filter</button>}
-        </div>
-        <StateTable model={model} month={month} selectedState={kind === "state" ? filterState : null} onSelect={go} kind={kind} />
-      </Card>
-    </div>
+      <div className="grid gap-5">
+        <Card className="p-5 sm:p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="text-[15px] font-semibold">Compare {noun}s</div>
+            <Tabs tabs={METRICS.map((m) => ({ id: m.id, label: m.label }))} value={metric} onChange={setMetric} size="sm" />
+          </div>
+          <StateRanking model={model} month={month} def={kpiById(metric)!} selectedState={sel} onSelect={go} kind={kind} />
+        </Card>
+        <Card className="p-5 sm:p-6">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-[15px] font-semibold">{kind === "state" ? "State" : "Channel"} detail</div>
+            {kind === "state" && filterState && <button onClick={() => setState(null)} className="text-xs font-semibold text-mute underline">Clear state filter</button>}
+          </div>
+          <StateTable model={model} month={month} selectedState={sel} onSelect={go} onDrill={go} kind={kind} />
+        </Card>
+      </div>
+    </section>
   );
 }
 

@@ -58,13 +58,13 @@ export function ODDTimingChart({
           }}
         />
         <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
-        <Bar dataKey="pre" name="Pre ODD" stackId="a" fill={ODD_COLORS.pre} radius={[0, 0, 0, 0]} animationDuration={600}>
+        <Bar isAnimationActive dataKey="pre" name="Pre ODD" stackId="a" fill={ODD_COLORS.pre} radius={[0, 0, 0, 0]} animationDuration={600}>
           {data.map((d) => <Cell key={d.month} fillOpacity={dim("pre") * (d.month === selected ? 1 : 0.85)} />)}
         </Bar>
-        <Bar dataKey="on" name="On ODD" stackId="a" fill={ODD_COLORS.on} animationDuration={600}>
+        <Bar isAnimationActive dataKey="on" name="On ODD" stackId="a" fill={ODD_COLORS.on} animationDuration={600}>
           {data.map((d) => <Cell key={d.month} fillOpacity={dim("on") * (d.month === selected ? 1 : 0.85)} />)}
         </Bar>
-        <Bar dataKey="post" name="Post ODD" stackId="a" fill={ODD_COLORS.post} radius={[8, 8, 0, 0]} animationDuration={600}>
+        <Bar isAnimationActive dataKey="post" name="Post ODD" stackId="a" fill={ODD_COLORS.post} radius={[8, 8, 0, 0]} animationDuration={600}>
           {data.map((d) => (
             <Cell key={d.month} fill={d.month === selected && !focus ? C.bad : ODD_COLORS.post} fillOpacity={dim("post") * (d.month === selected ? 1 : 0.85)} />
           ))}

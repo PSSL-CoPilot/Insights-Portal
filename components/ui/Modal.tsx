@@ -23,14 +23,14 @@ export function Modal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-3 sm:p-6 lg:p-8" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 animate-fade bg-panel/45 backdrop-blur-[3px]" onClick={onClose} />
+      <div className="fixed inset-0 animate-fade bg-panel/45" onClick={onClose} />
       <div
         className={cn(
           "modal-enter relative my-auto w-full max-w-[1280px] overflow-hidden rounded-[24px] border border-line bg-canvas shadow-pop lg:w-[82vw]",
           className,
         )}
       >
-        <div className="sticky top-0 z-10 border-b border-line bg-card/90 backdrop-blur">
+        <div className="sticky top-0 z-10 border-b border-line bg-card">
           {header}
           <button
             onClick={onClose}

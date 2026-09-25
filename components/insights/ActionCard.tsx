@@ -146,7 +146,7 @@ function InitiateDialog({ action, month, onClose, onSent }: { action: ActionItem
   // Portal to <body>: the card's entrance animation leaves a transform that would trap a fixed overlay.
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-3 sm:p-8" role="dialog" aria-modal="true" aria-label={`Initiate ${action.title}`}>
-      <div className="fixed inset-0 animate-fade bg-black/55 backdrop-blur-[3px]" onClick={onClose} />
+      <div className="fixed inset-0 animate-fade bg-black/55" onClick={onClose} />
       <div className="relative my-auto w-full max-w-2xl animate-rise overflow-hidden rounded-[22px] border border-line bg-card shadow-pop">
         <div className="bs-gradient px-6 py-5 text-[#111]">
           <div className="flex items-start justify-between gap-4">

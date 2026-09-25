@@ -125,7 +125,7 @@ export function StateDrilldown({ scope }: { scope: string }) {
                         <XAxis dataKey="n" {...axisProps} />
                         <YAxis hide domain={[0, "dataMax"]} />
                         <Tooltip cursor={false} content={({ active, payload }) => active && payload?.length ? <TipCard title={c.name} rows={[{ label: String(payload[0].payload.n), value: c.unit === "p" ? fmtPct(payload[0].payload.v) : fmtInt(payload[0].payload.v) }]} /> : null} />
-                        <Bar dataKey="v" radius={[8, 8, 0, 0]} animationDuration={700}>
+                        <Bar isAnimationActive dataKey="v" radius={[8, 8, 0, 0]} animationDuration={700}>
                           <Cell fill={C.slate} />
                           <Cell fill={t === "bad" ? C.bad : t === "good" ? C.good : C.indigo} />
                         </Bar>
@@ -146,9 +146,9 @@ export function StateDrilldown({ scope }: { scope: string }) {
                   <YAxis {...axisProps} width={40} domain={["dataMin - 5", "dataMax + 5"]} tickFormatter={(v) => String(Math.round(v))} />
                   <Tooltip content={({ active, payload, label }) => active && payload?.length ? <TipCard title={String(label)} rows={payload.map((p) => ({ label: String(p.name), value: Number(p.value).toFixed(0), color: String(p.color) }))} /> : null} />
                   <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
-                  <Line type="monotone" dataKey="Sales" stroke={C.good} strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="Installs" stroke={C.brand} strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="Cancellations" stroke={C.bad} strokeWidth={2.75} dot={{ r: 3, fill: C.card, stroke: C.bad, strokeWidth: 2 }} />
+                  <Line isAnimationActive type="monotone" dataKey="Sales" stroke={C.good} strokeWidth={2} dot={false} />
+                  <Line isAnimationActive type="monotone" dataKey="Installs" stroke={C.brand} strokeWidth={2} dot={false} />
+                  <Line isAnimationActive type="monotone" dataKey="Cancellations" stroke={C.bad} strokeWidth={2.75} dot={{ r: 3, fill: C.card, stroke: C.bad, strokeWidth: 2 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -188,9 +188,9 @@ export function StateDrilldown({ scope }: { scope: string }) {
                     <XAxis type="number" hide domain={[0, 1]} />
                     <YAxis type="category" dataKey="label" {...axisProps} width={78} tick={{ fill: C.ink, fontSize: 12.5, fontWeight: 600 }} />
                     <Tooltip cursor={false} content={({ active, payload }) => active && payload?.length ? <TipCard title={String(payload[0].payload.label)} rows={[{ label: "Post ODD", value: fmtPct0(payload[0].payload.post), color: ODD_COLORS.post }, { label: "On ODD", value: fmtPct0(payload[0].payload.on), color: ODD_COLORS.on }, { label: "Pre ODD", value: fmtPct0(payload[0].payload.pre), color: ODD_COLORS.pre }]} /> : null} />
-                    <Bar dataKey="pre" stackId="s" fill={ODD_COLORS.pre} name="Pre ODD" radius={[10, 0, 0, 10]} label={{ position: "center", formatter: (v: unknown) => fmtPct0(Number(v)), fontSize: 11, fill: "#222" }} />
-                    <Bar dataKey="on" stackId="s" fill={ODD_COLORS.on} name="On ODD" label={{ position: "center", formatter: (v: unknown) => fmtPct0(Number(v)), fontSize: 11, fill: "#222" }} />
-                    <Bar dataKey="post" stackId="s" fill={ODD_COLORS.post} name="Post ODD" radius={[0, 10, 10, 0]} label={{ position: "center", formatter: (v: unknown) => fmtPct0(Number(v)), fontSize: 12, fontWeight: 700, fill: "#fff" }} />
+                    <Bar isAnimationActive dataKey="pre" stackId="s" fill={ODD_COLORS.pre} name="Pre ODD" radius={[10, 0, 0, 10]} label={{ position: "center", formatter: (v: unknown) => fmtPct0(Number(v)), fontSize: 11, fill: "#222" }} />
+                    <Bar isAnimationActive dataKey="on" stackId="s" fill={ODD_COLORS.on} name="On ODD" label={{ position: "center", formatter: (v: unknown) => fmtPct0(Number(v)), fontSize: 11, fill: "#222" }} />
+                    <Bar isAnimationActive dataKey="post" stackId="s" fill={ODD_COLORS.post} name="Post ODD" radius={[0, 10, 10, 0]} label={{ position: "center", formatter: (v: unknown) => fmtPct0(Number(v)), fontSize: 12, fontWeight: 700, fill: "#fff" }} />
                     <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
                   </BarChart>
                 </ResponsiveContainer>

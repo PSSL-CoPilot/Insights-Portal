@@ -133,6 +133,5 @@ body {
 .recharts-cartesian-axis-tick-value { fill: var(--color-mute); font-size: 11px; }
 .recharts-legend-item-text { color: var(--color-ink-2) !important; }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
-}
+/* Soft brand glow drawn as a gradient, not a blur filter, so it costs nothing per frame. */
+.glow { background: radial-gradient(circle, rgba(255, 199, 44, 0.45) 0%, rgba(242, 106, 54, 0.18) 38%, transparent 70%); }
