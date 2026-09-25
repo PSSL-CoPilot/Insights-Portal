@@ -97,7 +97,7 @@ export function StateTable({
                   <td className="py-1.5 pr-2 text-right">
                     <button onClick={(e) => { e.stopPropagation(); onDrill(r.name); }} title={`Open the ${r.name} plan`}
                       className="inline-flex h-7 items-center gap-1 whitespace-nowrap rounded-full bg-panel px-2.5 text-[11.5px] font-semibold text-white transition-transform duration-200 hover:-translate-y-px">
-                      Plan <ArrowUpRight className="size-3" />
+                      Drill <ArrowUpRight className="size-3" />
                     </button>
                   </td>
                 )}
