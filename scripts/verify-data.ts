@@ -1,0 +1,15 @@
+import { loadDataModel } from "../lib/data/excelLoader";
+const m = loadDataModel();
+console.log("ok:", m.ok, "| months:", m.months.join(","), "| latest:", m.latestMonth, "| drill:", m.drillMonth, "| watch:", m.watchMonth);
+console.log("states:", m.states.join(", "));
+console.log("sheets:", m.meta.sheets.map((s) => `${s.name}(${s.rows})`).join(" | "));
+console.log("issues:", m.issues);
+console.log("kpiCards[0..2]:", m.kpiCards.slice(0, 3), "hotspot:", m.hotspotBlock.length);
+console.log("monthly last:", m.monthlyOverview.at(-1));
+console.log("stateDrill NC:", m.stateDrill.find((s) => s.state === "North Carolina"));
+console.log("reasons NC Sep:", m.customerMissReasons.filter((r) => r.state === "North Carolina" && r.month === m.latestMonth));
+console.log("watch:", m.watchtower.find((w) => w.state === "North Carolina"), m.watchtower.find((w) => w.isPortfolio));
+console.log("journey:", m.journey.map((j) => `${j.step} ${j.date} ${j.event}`));
+console.log("questions:", m.executiveQuestions.length, "dictionary:", m.dictionary.length, "channels:", m.channels);
+const sumReason = (r: string) => m.customerMissReasons.filter((x) => x.month === m.latestMonth && x.reason === r).reduce((a, x) => a + (x.count ?? 0), 0);
+for (const r of ["Buyer’s Remorse", "Customer Requested Cancel", "No Access / Not Home", "Customer Requested Reschedule", "Cancelled while Tech on Job", "Other Customer Miss"]) console.log(r, sumReason(r));
