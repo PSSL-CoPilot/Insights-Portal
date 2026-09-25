@@ -6,7 +6,7 @@ import { fmtCompact, fmtInt, fmtPct0, monthLabel, monthShort } from "@/lib/forma
 import type { DataModel, MonthKey } from "@/lib/data/types";
 import { getSnapshot } from "@/lib/data/metrics";
 
-export const ODD_COLORS = { pre: C.slate, on: C.lilac, post: C.indigo } as const;
+export const ODD_COLORS = { pre: "#c9c9c1", on: C.brand, post: C.orange } as const;
 export type OddBucket = "pre" | "on" | "post";
 
 /** Stacked Pre / On / Post ODD cancellations by month (count or 100%-share mode). */
@@ -41,7 +41,7 @@ export function ODDTimingChart({
         <XAxis dataKey="label" {...axisProps} dy={6} />
         <YAxis {...axisProps} width={44} domain={mode === "pct" ? [0, 1] : [0, "auto"]} tickFormatter={(v) => (mode === "pct" ? `${Math.round(v * 100)}%` : fmtCompact(v, 0))} />
         <Tooltip
-          cursor={{ fill: "rgba(17,17,17,0.04)" }}
+          cursor={{ fill: "rgba(128,128,128,0.08)" }}
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
             const p = payload[0].payload as (typeof data)[number];
@@ -49,24 +49,24 @@ export function ODDTimingChart({
               <TipCard
                 title={monthLabel(p.month)}
                 rows={[
-                  { label: "Post-ODD", value: `${fmtInt(p.postN)} · ${fmtPct0(p.postP)}`, color: ODD_COLORS.post },
-                  { label: "On-ODD", value: `${fmtInt(p.onN)} · ${fmtPct0(p.onP)}`, color: ODD_COLORS.on },
-                  { label: "Pre-ODD", value: `${fmtInt(p.preN)} · ${fmtPct0(p.preP)}`, color: ODD_COLORS.pre },
+                  { label: "Post ODD", value: `${fmtInt(p.postN)} · ${fmtPct0(p.postP)}`, color: ODD_COLORS.post },
+                  { label: "On ODD", value: `${fmtInt(p.onN)} · ${fmtPct0(p.onP)}`, color: ODD_COLORS.on },
+                  { label: "Pre ODD", value: `${fmtInt(p.preN)} · ${fmtPct0(p.preP)}`, color: ODD_COLORS.pre },
                 ]}
               />
             );
           }}
         />
         <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
-        <Bar dataKey="pre" name="Pre-ODD" stackId="a" fill={ODD_COLORS.pre} radius={[0, 0, 0, 0]} animationDuration={600}>
+        <Bar dataKey="pre" name="Pre ODD" stackId="a" fill={ODD_COLORS.pre} radius={[0, 0, 0, 0]} animationDuration={600}>
           {data.map((d) => <Cell key={d.month} fillOpacity={dim("pre") * (d.month === selected ? 1 : 0.85)} />)}
         </Bar>
-        <Bar dataKey="on" name="On-ODD" stackId="a" fill={ODD_COLORS.on} animationDuration={600}>
+        <Bar dataKey="on" name="On ODD" stackId="a" fill={ODD_COLORS.on} animationDuration={600}>
           {data.map((d) => <Cell key={d.month} fillOpacity={dim("on") * (d.month === selected ? 1 : 0.85)} />)}
         </Bar>
-        <Bar dataKey="post" name="Post-ODD" stackId="a" fill={ODD_COLORS.post} radius={[8, 8, 0, 0]} animationDuration={600}>
+        <Bar dataKey="post" name="Post ODD" stackId="a" fill={ODD_COLORS.post} radius={[8, 8, 0, 0]} animationDuration={600}>
           {data.map((d) => (
-            <Cell key={d.month} fill={d.month === selected && !focus ? C.ink : ODD_COLORS.post} fillOpacity={dim("post") * (d.month === selected ? 1 : 0.85)} />
+            <Cell key={d.month} fill={d.month === selected && !focus ? C.bad : ODD_COLORS.post} fillOpacity={dim("post") * (d.month === selected ? 1 : 0.85)} />
           ))}
         </Bar>
       </BarChart>

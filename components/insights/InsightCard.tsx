@@ -17,7 +17,7 @@ export function InsightCard({ insight, index = 0 }: { insight: Insight; index?: 
           <div className="eyebrow mt-4">{insight.metric.label}</div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="num text-[34px] font-semibold leading-none">{insight.metric.value}</span>
-            {insight.metric.delta && <span className={cn("num text-sm font-bold", insight.severity === "critical" || insight.severity === "high" ? "text-bad" : "text-mute")}>{insight.metric.delta}</span>}
+            {insight.metric.delta && <span className={cn("num text-sm font-bold", insight.metric.tone === "bad" ? "text-bad" : insight.metric.tone === "good" ? "text-good" : "text-mute")}>{insight.metric.delta}</span>}
           </div>
         </div>
         <div>
@@ -31,13 +31,13 @@ export function InsightCard({ insight, index = 0 }: { insight: Insight; index?: 
               ))}
             </ul>
           </div>
-          <div className="mt-4 flex gap-2 rounded-xl bg-[#f7f7f3] px-3.5 py-2.5 text-[13px]">
+          <div className="mt-4 flex gap-2 rounded-xl bg-subtle px-3.5 py-2.5 text-[13px]">
             <CornerDownRight className="mt-0.5 size-4 shrink-0 text-mute" />
             <span><strong>Recommended action:</strong> <span className="text-ink-2">{insight.action}</span></span>
           </div>
         </div>
         <div className="flex items-end lg:items-center">
-          <Link href={insight.explore.href} className="group inline-flex h-10 items-center gap-2 rounded-full bg-ink px-4 text-[13px] font-semibold text-white transition hover:bg-ink-2">
+          <Link href={insight.explore.href} className="group inline-flex h-10 items-center gap-2 rounded-full bg-panel px-4 text-[13px] font-semibold text-white transition hover:bg-panel-2">
             {insight.explore.label} <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
           </Link>
         </div>

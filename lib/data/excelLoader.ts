@@ -10,7 +10,7 @@ import * as XLSX from "xlsx";
 import type { DataModel } from "./types";
 import { buildModel } from "./transformations";
 
-export const WORKBOOK_FILE = "Brightspeed_Scenario2_App_Data_Jan_Sep_2026.xlsx";
+export const WORKBOOK_FILE = "Brightspeed_Cancellation_Data_Jan_Sep_2026.xlsx";
 
 export function workbookPath(): string {
   return process.env.BRIGHTSPEED_DATA_FILE
@@ -28,7 +28,7 @@ function emptyModel(file: string, message: string): DataModel {
     months: [], latestMonth: null, states: [], drillMonth: null, watchMonth: null, hotspotState: null, workbookNotes: {},
     kpiCards: [], hotspotBlock: [], monthlyOverview: [], stateMonthly: [], stateDrill: [], oddTiming: [],
     classification: [], customerMissReasons: [], watchtower: [], journey: [], executiveQuestions: [], dictionary: [],
-    channels: null,
+    channels: null, channelNames: [], stateChannel: [],
   };
 }
 

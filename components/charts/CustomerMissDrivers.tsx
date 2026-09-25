@@ -7,7 +7,7 @@ import type { DataModel, MonthKey } from "@/lib/data/types";
 import { reasonAnnotation, reasonStats } from "@/lib/data/metrics";
 import { Badge } from "../ui/primitives";
 
-/** Ranked customer-miss reasons. Late-stage / anomalous reasons are highlighted from the data (growth + sheet flags). */
+/** Ranked customer-miss reasons. Late stage / anomalous reasons are highlighted from the data (growth + sheet flags). */
 export function CustomerMissDrivers({ model, month, state, showInsight = true }: { model: DataModel; month: MonthKey; state: string | null; showInsight?: boolean }) {
   const stats = reasonStats(model, month, state);
   const rows: RankedRow[] = stats.map((r) => {
@@ -24,12 +24,12 @@ export function CustomerMissDrivers({ model, month, state, showInsight = true }:
       value: r.count,
       valueLabel: `${fmtInt(r.count)} · ${fmtPct0(r.share)}`,
       sub: showInsight && anno?.insight ? anno.insight : undefined,
-      chip: r.mom !== null ? { text: fmtSignedPct(r.mom), tone: r.mom > 0.25 ? "bad" : r.mom < -0.05 ? "good" : "neutral" } : undefined,
-      color: hot ? C.bad : r.lateStage ? C.indigo : C.lilac,
+      chip: r.mom !== null ? { text: fmtSignedPct(r.mom), tone: r.mom > 0.02 ? "bad" : r.mom < -0.02 ? "good" : "neutral" } : undefined,
+      color: hot ? C.bad : r.lateStage ? C.orange : C.lilac,
       emphasis: hot,
       tip: r.prevCount !== null ? `Prior month: ${fmtInt(r.prevCount)}` : undefined,
     };
   });
-  if (!rows.some((r) => r.value)) return <div className="py-8 text-center text-sm text-mute">No customer-miss reason data for this selection.</div>;
+  if (!rows.some((r) => r.value)) return <div className="py-8 text-center text-sm text-mute">No Customer Miss reason data is available for this selection.</div>;
   return <RankedBars rows={rows} />;
 }

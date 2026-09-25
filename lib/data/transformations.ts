@@ -20,6 +20,7 @@ import type {
   ReasonRow,
   SheetStatus,
   StateDrillRow,
+  StateChannelRow,
   StateMonthlyRow,
   WatchtowerRow,
 } from "./types";
@@ -37,7 +38,8 @@ export const SHEETS = {
   journey: "Example Customer Journey",
   questions: "Executive Questions",
   dictionary: "Data Dictionary",
-  channels: "Channel Monthly", // optional / future
+  channels: "Channel Monthly",
+  stateChannel: "September State x Channel",
 } as const;
 
 const REQUIRED_SHEETS = [
@@ -99,6 +101,11 @@ const stateMonthlySpec: TableSpec = {
   coPct: { kind: "p", headers: ["Company Miss %"], ...opt },
   faux: { kind: "n", headers: ["Faux Cancels", "Faux"], ...opt },
   fauxPct: { kind: "p", headers: ["Faux %"], ...opt },
+  pendingPct: { kind: "p", headers: ["Pending Customer Contact %"], ...opt },
+  actionPct: { kind: "p", headers: ["Action Needed Not Jeopardy %"], ...opt },
+  jeopardyPct: { kind: "p", headers: ["Install in Jeopardy %"], ...opt },
+  bswPct: { kind: "p", headers: ["BSW Delay Predicted %"], ...opt },
+  onTimePct: { kind: "p", headers: ["On-Time Install %"], ...opt },
 };
 
 const stateDrillSpec: TableSpec = {
@@ -143,7 +150,7 @@ const reasonSpec: TableSpec = {
   count: { kind: "n", headers: ["Count"] },
   share: { kind: "p", headers: ["Share of State Customer Miss", "Share"], ...opt },
   mom: { kind: "r", headers: ["Month-over-Month Change", "MoM Change", "MoM %"], ...opt },
-  flag: { kind: "s", headers: ["Scenario Flag", "Flag"], ...opt },
+  flag: { kind: "s", headers: ["Flag"], ...opt },
   insight: { kind: "s", headers: ["Insight"], ...opt },
 };
 
@@ -168,7 +175,7 @@ const journeySpec: TableSpec = {
 
 const questionSpec: TableSpec = {
   question: { kind: "s", headers: ["Executive question", "Question"] },
-  answer: { kind: "s", headers: ["Scenario 2 answer", "Answer"] },
+  answer: { kind: "s", headers: ["Answer"] },
   evidence: { kind: "s", headers: ["Evidence"], ...opt },
   nextStep: { kind: "s", headers: ["Recommended next step", "Next step"], ...opt },
   drill: { kind: "s", headers: ["Primary app drill", "Drill"], ...opt },
@@ -179,7 +186,7 @@ const dictSpec: TableSpec = {
   definition: { kind: "s", headers: ["Definition"] },
   unit: { kind: "s", headers: ["Unit / Format", "Unit"], ...opt },
   source: { kind: "s", headers: ["Primary source sheet", "Source"], ...opt },
-  note: { kind: "s", headers: ["Scenario note", "Note"], ...opt },
+  note: { kind: "s", headers: ["Note"], ...opt },
 };
 
 const kpiSpec: TableSpec = {
@@ -200,11 +207,25 @@ const hotspotSpec: TableSpec = {
 };
 
 const channelSpec: TableSpec = {
-  month: { kind: "m", headers: ["Month"] },
+  ...Object.fromEntries(Object.entries(stateMonthlySpec).filter(([k]) => k !== "state" && k !== "cancelsMoM").map(([k, v]) => [k, { ...v, required: k === "month" }])),
   channel: { kind: "s", headers: ["Channel"] },
-  sales: { kind: "n", headers: ["Unique Sales", "Sales"], ...opt },
+  pendingPct: { kind: "p", headers: ["Pending Customer Contact %"], ...opt },
+  jeopardyPct: { kind: "p", headers: ["Install in Jeopardy %"], ...opt },
+  bswPct: { kind: "p", headers: ["BSW Delay Predicted %"], ...opt },
+  onTimePct: { kind: "p", headers: ["On-Time Install %"], ...opt },
+};
+
+const stateChannelSpec: TableSpec = {
+  state: { kind: "s", headers: ["State"] },
+  channel: { kind: "s", headers: ["Channel"] },
+  sales: { kind: "n", headers: ["Unique Sales"], ...opt },
   installs: { kind: "n", headers: ["Installs"], ...opt },
-  cancels: { kind: "n", headers: ["Cancellations", "Cancels"], ...opt },
+  cancels: { kind: "n", headers: ["Cancellations"], ...opt },
+  cancelRate: { kind: "p", headers: ["Cancel Rate"], ...opt },
+  cancelGrowth: { kind: "r", headers: ["Cancel Growth vs Aug", "Cancels MoM %"], ...opt },
+  postPct: { kind: "p", headers: ["Post-ODD %"], ...opt },
+  custPct: { kind: "p", headers: ["Customer Miss %"], ...opt },
+  pendingPct: { kind: "p", headers: ["Pending Customer Contact %"], ...opt },
 };
 
 // ---------------------------------------------------------------- helpers
@@ -285,6 +306,7 @@ export function buildModel(
       preCancels: n(r.preCancels), prePct: n(r.prePct), onCancels: n(r.onCancels), onPct: n(r.onPct),
       postCancels: n(r.postCancels), postPct: n(r.postPct),
       custMiss: n(r.custMiss), custPct: n(r.custPct), coMiss: n(r.coMiss), coPct: n(r.coPct), faux: n(r.faux), fauxPct: n(r.fauxPct),
+      pendingPct: n(r.pendingPct), actionPct: n(r.actionPct), jeopardyPct: n(r.jeopardyPct), bswPct: n(r.bswPct), onTimePct: n(r.onTimePct),
     }));
   setRows(SHEETS.stateMonthly, stateMonthly.length);
   const states = [...new Set(stateMonthly.map((r) => r.state))];
@@ -426,16 +448,29 @@ export function buildModel(
   }
   if (mo.grid) workbookNotes.monthlyOverview = sheetTitles(mo.grid)[1];
 
-  // --- optional channel sheet (future)
+  // --- channel sheets (optional)
   let channels: ChannelMonthlyRow[] | null = null;
   if (channelsSheetFound) {
     const ch = table(wb, SHEETS.channels, channelSpec, issues, { optional: true });
     channels = rowsOf(ch.parsed)
       .filter((r) => r.month && r.channel)
-      .map((r) => ({ month: r.month as string, channel: r.channel as string, sales: n(r.sales), installs: n(r.installs), cancels: n(r.cancels) }));
+      .map((r) => ({
+        month: r.month as string, channel: r.channel as string,
+        ...(Object.fromEntries(Object.keys(channelSpec).filter((k) => k !== "month" && k !== "channel").map((k) => [k, n(r[k])])) as Omit<ChannelMonthlyRow, "month" | "channel">),
+      }));
+    channels.forEach((r) => {
+      if (r.cancelRate === null && r.cancels !== null && r.sales) r.cancelRate = r.cancels / r.sales;
+    });
     setRows(SHEETS.channels, channels.length);
     if (channels.length === 0) channels = null;
   }
+  const sc = getSheet(wb, SHEETS.stateChannel) ? table(wb, SHEETS.stateChannel, stateChannelSpec, issues, { optional: true }) : null;
+  const stateChannel: StateChannelRow[] = rowsOf(sc?.parsed ?? null)
+    .filter((r) => r.state && r.channel)
+    .map((r) => ({
+      state: r.state as string, channel: r.channel as string, sales: n(r.sales), installs: n(r.installs), cancels: n(r.cancels),
+      cancelRate: n(r.cancelRate), cancelGrowth: n(r.cancelGrowth), postPct: n(r.postPct), custPct: n(r.custPct), pendingPct: n(r.pendingPct),
+    }));
 
   // --- derived context
   const months = [...new Set(monthlyOverview.map((r) => r.month))].sort();
@@ -467,6 +502,8 @@ export function buildModel(
     executiveQuestions,
     dictionary,
     channels,
+    channelNames: [...new Set((channels ?? []).map((r) => r.channel))],
+    stateChannel,
   };
 
   // which state does the hotspot block on "Dashboard KPI" describe? (its title row mentions it)
@@ -481,7 +518,7 @@ export function buildModel(
   crossValidate(model);
   model.ok = !issues.some((i) => i.level === "error") && months.length > 0;
   if (months.length === 0 && !issues.some((i) => i.level === "error")) {
-    issues.push({ level: "error", sheet: SHEETS.monthly, message: "No monthly rows could be read — the dashboard has nothing to show." });
+    issues.push({ level: "error", sheet: SHEETS.monthly, message: "No monthly rows could be read; the dashboard has nothing to show." });
   }
   return model;
 }

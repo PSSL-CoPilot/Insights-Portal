@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { ArrowDown, ArrowRight, MapPin, Sparkles } from "lucide-react";
+import { ArrowDown, MapPin, Network } from "lucide-react";
+import { GenieMark } from "../ui/Marks";
 import { useApp } from "../AppContext";
 import { diagnose, executiveSummary } from "@/lib/data/narratives";
 import { getSnapshot, series } from "@/lib/data/metrics";
@@ -18,20 +19,21 @@ export function ExecutiveSummary() {
   const salesSeries = series(model, "sales", null).filter((p) => p.month <= month).map((p) => p.value);
   const q = `month=${month}`;
   const hot = d.anomaly ? d.hotspot?.state : null;
+  const focusCh = d.anomaly && (d.focusChannel?.contribution ?? 0) > 0.25 ? d.focusChannel!.channel : null;
 
   const scrollToKpis = () => document.getElementById("kpis")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
     <section aria-labelledby="exec-summary">
       <Card className="relative overflow-hidden">
-        <div className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-brand/20 blur-3xl" />
+        <div className="bs-gradient pointer-events-none absolute -right-24 -top-24 size-72 rounded-full opacity-20 blur-3xl" />
         <div className="relative grid gap-0 lg:grid-cols-[1.7fr_1fr]">
           <div className="p-6 sm:p-9">
             <div className="flex flex-wrap items-center gap-2.5">
-              <span className="grid size-7 place-items-center rounded-full bg-ink text-brand"><Sparkles className="size-3.5" /></span>
+              <GenieMark size={28} />
               <span className="eyebrow">Executive summary</span>
               <Badge>{monthLabel(month)}</Badge>
-              {d.anomaly ? <Badge tone="bad">Anomaly detected</Badge> : d.prev ? <Badge tone="good">In line with trend</Badge> : null}
+              {d.anomaly ? <Badge tone="bad">Exception detected</Badge> : d.prev ? <Badge tone="good">In line with trend</Badge> : null}
             </div>
             <h2 id="exec-summary" className="mt-4 max-w-2xl text-[30px] font-semibold leading-[1.15] tracking-tight sm:text-[34px]">
               {sum.headline}
@@ -47,10 +49,10 @@ export function ExecutiveSummary() {
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <button
                 onClick={scrollToKpis}
-                className="group inline-flex h-14 items-center gap-3 rounded-full bg-ink pl-7 pr-3 text-[16px] font-semibold text-white shadow-pop transition hover:-translate-y-0.5 hover:bg-ink-2"
+                className="group inline-flex h-14 items-center gap-3 rounded-full bg-panel pl-7 pr-3 text-[16px] font-semibold text-white shadow-pop transition hover:-translate-y-0.5 hover:bg-panel-2"
               >
                 Explore
-                <span className="grid size-9 place-items-center rounded-full bg-brand text-ink transition group-hover:translate-y-0.5">
+                <span className="bs-gradient grid size-9 place-items-center rounded-full text-[#111] transition group-hover:translate-y-0.5">
                   <ArrowDown className="size-4" />
                 </span>
               </button>
@@ -63,14 +65,18 @@ export function ExecutiveSummary() {
                   <MapPin className="size-3.5 text-bad" /> Explore {hot}
                 </LinkButton>
               )}
-              <LinkButton href={`/cancellations?tab=timing&bucket=post&${q}`} size="sm">View Post-ODD Analysis</LinkButton>
-              <LinkButton href={`/cancellations?tab=miss&${q}`} size="sm">Review Customer Miss</LinkButton>
-              <LinkButton href={`/actions?${q}#rescue`} size="sm">View Rescue Opportunities</LinkButton>
+              {focusCh && (
+                <LinkButton href={`/channels/${stateSlug(focusCh)}?${q}`} size="sm">
+                  <Network className="size-3.5 text-bad" /> Explore {focusCh}
+                </LinkButton>
+              )}
+              <LinkButton href={`/cancellations?tab=timing&bucket=post&${q}`} size="sm">View Post ODD Analysis</LinkButton>
+              <LinkButton href={`/actions?${q}`} size="sm">View Recommended Actions</LinkButton>
             </div>
           </div>
 
           {/* hero numbers */}
-          <div className="relative border-t border-line bg-ink p-6 text-white sm:p-9 lg:border-l lg:border-t-0">
+          <div className="relative border-t border-line bg-panel p-6 text-white sm:p-9 lg:border-l lg:border-t-0">
             <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/50">{monthName(month)} vs prior month</div>
             {d.prev ? (
               <div className="mt-5 space-y-7">
@@ -78,10 +84,10 @@ export function ExecutiveSummary() {
                   <div className="text-[13px] text-white/60">Cancellations</div>
                   <div className="flex items-end justify-between gap-3">
                     <div>
-                      <div className="num text-[56px] font-semibold leading-none" style={{ color: d.anomaly ? "#ff7d81" : "#fff" }}>{fmtSignedPct(d.cancelsMoM)}</div>
+                      <div className="num text-[56px] font-semibold leading-none" style={{ color: (d.cancelsMoM ?? 0) > 0 ? "#ff7d6e" : "#4ade80" }}>{fmtSignedPct(d.cancelsMoM)}</div>
                       <div className="mt-2 text-[13px] text-white/60">{fmtCompact(cur.cancels)} orders · cancel rate {fmtPct(cur.cancelRate)}</div>
                     </div>
-                    <Sparkline values={cancelSeries} color={d.anomaly ? "#ff7d81" : "#FFC72C"} width={110} height={48} />
+                    <Sparkline values={cancelSeries} color={(d.cancelsMoM ?? 0) > 0 ? "#ff7d6e" : "#4ade80"} width={110} height={48} />
                   </div>
                 </div>
                 <div className="h-px bg-white/10" />
@@ -89,20 +95,20 @@ export function ExecutiveSummary() {
                   <div className="text-[13px] text-white/60">Unique Sales</div>
                   <div className="flex items-end justify-between gap-3">
                     <div>
-                      <div className="num text-[40px] font-semibold leading-none">{fmtSignedPct(d.salesMoM)}</div>
+                      <div className="num text-[40px] font-semibold leading-none" style={{ color: (d.salesMoM ?? 0) >= 0 ? "#4ade80" : "#ff7d6e" }}>{fmtSignedPct(d.salesMoM)}</div>
                       <div className="mt-2 text-[13px] text-white/60">{fmtCompact(cur.sales)} sales</div>
                     </div>
-                    <Sparkline values={salesSeries} color="#b9b6f2" width={110} height={40} />
+                    <Sparkline values={salesSeries} color={(d.salesMoM ?? 0) >= 0 ? "#4ade80" : "#ff7d6e"} width={110} height={40} />
                   </div>
                 </div>
                 {d.anomaly && (
                   <div className="rounded-2xl bg-white/[0.07] px-4 py-3 text-[13px] leading-snug text-white/80">
-                    Cancellations are growing <strong className="text-brand">{((d.cancelsMoM ?? 0) / Math.max(d.salesMoM ?? 0.0001, 0.0001)).toFixed(0)}×</strong> faster than sales.
+                    Cancellations are growing <strong className="bs-gradient-text">{((d.cancelsMoM ?? 0) / Math.max(d.salesMoM ?? 0.0001, 0.0001)).toFixed(0)}×</strong> faster than sales.
                   </div>
                 )}
               </div>
             ) : (
-              <p className="mt-5 text-sm text-white/60">First month in the workbook — no prior month to compare against.</p>
+              <p className="mt-5 text-sm text-white/60">First month in the dataset: no prior month is available for comparison.</p>
             )}
           </div>
         </div>

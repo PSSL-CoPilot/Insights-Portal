@@ -5,10 +5,10 @@
  */
 import type { DataModel, MonthKey } from "./types";
 import {
-  assess, findHotspot, getSnapshot, kpiById, kpiDelta, nk, prevMonth, reasonStats, stateRows, excessCancels,
-  type StateRow, REASON_LABELS,
+  assess, findFocusChannel, findHotspot, getSnapshot, isChannel, kpiById, kpiDelta, nk, prevMonth, reasonStats, scopeName, stateRows, excessCancels,
+  type ChannelRow, type StateRow, REASON_LABELS,
 } from "./metrics";
-import { fmtInt, fmtPct, fmtPct0, fmtPp, fmtSignedPct, monthName, monthShort } from "../format";
+import { fmtInt, fmtPct, fmtPct0, fmtPp, fmtSignedPct, monthLabel, monthName, monthShort, stateSlug } from "../format";
 
 export type RootCause = "customer-readiness" | "operational" | "mixed" | "stable" | "insufficient";
 
@@ -33,6 +33,7 @@ export interface Diagnosis {
   jeopardyPct: number | null;
   hotspot: StateRow | null;
   runnerUpGrowth: number | null;
+  focusChannel: ChannelRow | null;
   lateDrivers: { label: string; count: number; mom: number }[];
   excess: ReturnType<typeof excessCancels>;
   rootCause: RootCause;
@@ -83,7 +84,7 @@ export function diagnose(model: DataModel, month: MonthKey): Diagnosis {
     postPct: cur.postPct, prevPostPct: pv?.postPct ?? null, postCancels: cur.postCancels, prevPostCancels: pv?.postCancels ?? null,
     custPct: cur.custPct, dominantClass: classes[0] ?? null,
     pendingPct: cur.pendingPct, pendingDelta, bswPct: cur.bswPct, jeopardyPct: cur.jeopardyPct,
-    hotspot, runnerUpGrowth: others.length ? Math.max(...others) : null, lateDrivers,
+    hotspot, runnerUpGrowth: others.length ? Math.max(...others) : null, focusChannel: findFocusChannel(model, month), lateDrivers,
     excess: excessCancels(model, month), rootCause,
   };
 }
@@ -97,7 +98,8 @@ export interface ExecSummary {
   chips: { label: string; value: string; tone: "bad" | "good" | "neutral" }[];
 }
 
-const shortReason = (l: string) => (nk(l) === nk(REASON_LABELS.resched) ? "Customer Reschedules" : nk(l) === nk(REASON_LABELS.tech) ? "Cancelled while Tech on Job" : l);
+const shortReason = (l: string) => (nk(l) === nk(REASON_LABELS.resched) ? "Customer Reschedules" : l);
+const abs = (s: string) => s.replace(/^[+−]/, "");
 
 export function executiveSummary(model: DataModel, month: MonthKey): ExecSummary {
   const d = diagnose(model, month);
@@ -108,7 +110,7 @@ export function executiveSummary(model: DataModel, month: MonthKey): ExecSummary
   if (!d.prev || d.cancelsMoM === null) {
     return {
       headline: `${M}: baseline month`,
-      paragraphs: [`${M} is the first month in the workbook, so no month-over-month comparison is possible. Select a later month to see what changed.`],
+      paragraphs: [`${M} is the first month in the dataset, so a month over month comparison is not available. Please select a later month to review performance movement.`],
       rootCause: "insufficient", chips,
     };
   }
@@ -116,60 +118,52 @@ export function executiveSummary(model: DataModel, month: MonthKey): ExecSummary
   const cm = fmtSignedPct(d.cancelsMoM);
   const sm = fmtSignedPct(d.salesMoM);
   if (d.anomaly) {
-    const outpaces = (d.salesMoM ?? 0) < d.cancelsMoM / 2;
-    let p1 = `**${M} cancellations ${d.cancelsMoM >= 0 ? "increased" : "changed"} ${cm.replace("+", "")}** while Unique Sales moved only **${sm}**, ${outpaces ? "indicating that the deterioration is **not explained by sales growth**" : "so sales growth explains only part of the change"}.`;
-    p1 += ` Cancel rate ${(d.cancelRate ?? 0) > (d.prevCancelRate ?? 0) ? "rose" : "fell"} to **${fmtPct(d.cancelRate)}** from ${fmtPct(d.prevCancelRate)}`;
-    if (d.installsMoM !== null && d.installsMoM < 0) p1 += `, and installs fell ${fmtSignedPct(d.installsMoM).replace("−", "")} despite higher sales`;
+    let p1 = `**${M} cancellations increased ${abs(cm)}** while Unique Sales ${(d.salesMoM ?? 0) >= 0 ? "grew" : "declined"} **${abs(sm)}**; the movement is therefore **not explained by demand volume**.`;
+    p1 += ` The cancel rate rose to **${fmtPct(d.cancelRate)}** from ${fmtPct(d.prevCancelRate)}`;
+    if (d.installsMoM !== null) p1 += d.installsMoM < 0 ? `, and installs declined ${abs(fmtSignedPct(d.installsMoM))}` : `, while installs grew a more modest ${abs(fmtSignedPct(d.installsMoM))}`;
     paras.push(p1 + ".");
-
-    if (d.postPct !== null && d.prevPostPct !== null) {
-      const shift = d.postPct - d.prevPostPct;
-      paras.push(
-        shift > 0.03
-          ? `The cancellation mix shifted significantly toward **Post-ODD**, which now represents **${fmtPct0(d.postPct)}** of cancellations (from ${fmtPct0(d.prevPostPct)})${d.postCancels !== null && d.prevPostCancels ? ` — ${fmtInt(d.postCancels)} orders, ${fmtSignedPct(d.postCancels / d.prevPostCancels - 1)} vs ${monthShort(d.prev)}` : ""}.`
-          : `The timing mix was broadly unchanged: Post-ODD is ${fmtPct0(d.postPct)} of cancellations (${fmtPct0(d.prevPostPct)} prior).`,
-      );
-    }
-
-    if (d.dominantClass) {
-      const drivers = d.lateDrivers.map((x) => `${shortReason(x.label)} (${fmtSignedPct(x.mom)})`);
-      paras.push(
-        `**${d.dominantClass.label}** remains the dominant classification at ${fmtPct0(d.dominantClass.pct)} of cancellations` +
-          (drivers.length ? `, and the fastest-growing customer-side reasons are ${drivers.join(", ")}` : "") + ".",
-      );
-    }
 
     if (d.hotspot && d.hotspot.cancelsMoM !== null) {
       const h = d.hotspot;
-      const parts = [`cancellations ${fmtSignedPct(h.cancelsMoM)}`];
-      if (h.postPct !== null) parts.push(`${fmtPct0(h.postPct)} Post-ODD`);
-      if (h.pendingPct !== null) parts.push(`${fmtPct0(h.pendingPct)} Pending Customer Contact`);
       paras.push(
-        `**${h.state}** is the most affected market — ${parts.join(", ")}${d.runnerUpGrowth !== null ? `, versus ${fmtSignedPct(d.runnerUpGrowth)} for the next-highest state` : ""}.`,
+        `**${h.state}** is the principal source of the increase: cancellations ${fmtSignedPct(h.cancelsMoM)}, contributing **${fmtPct0(h.contribution)}** of the portfolio change, with ${fmtPct0(h.postPct)} of its cancellations occurring after the Original Due Date` +
+          `${h.pendingPct !== null ? ` and ${fmtPct0(h.pendingPct)} carrying Pending Customer Contact` : ""}. ` +
+          `${d.runnerUpGrowth !== null ? `The remaining states stayed within their normal range (next highest ${fmtSignedPct(d.runnerUpGrowth)}).` : ""}`,
+      );
+    }
+
+    if (d.focusChannel && (d.focusChannel.contribution ?? 0) > 0.25) {
+      const c = d.focusChannel;
+      paras.push(`By channel, **${c.channel}** is the focus: cancellations ${fmtSignedPct(c.cancelsMoM)} at a ${fmtPct(c.cancelRate)} cancel rate, representing **${fmtPct0(c.contribution)}** of the increase.`);
+    }
+
+    if (d.postPct !== null && d.prevPostPct !== null && d.postPct - d.prevPostPct > 0.03) {
+      const drivers = d.lateDrivers.map((x) => `${shortReason(x.label)} (${fmtSignedPct(x.mom)})`);
+      paras.push(
+        `The cancellation mix moved toward **Post ODD**, now **${fmtPct0(d.postPct)}** of cancellations (from ${fmtPct0(d.prevPostPct)})` +
+          (drivers.length ? `, led by ${drivers.join(", ")}` : "") + ".",
       );
     }
 
     if (d.rootCause === "customer-readiness") {
       paras.push(
-        `The data therefore points toward a **customer engagement and appointment-readiness issue** rather than primarily a BSW or network readiness problem` +
-          (d.bswPct !== null ? ` (BSW Delay Predicted is only ${fmtPct0(d.bswPct)}${d.jeopardyPct !== null ? `, Install in Jeopardy ${fmtPct0(d.jeopardyPct)}` : ""}).` : "."),
+        `Taken together, the evidence points to a **customer engagement and appointment readiness issue** rather than network readiness` +
+          (d.bswPct !== null ? ` (BSW Delay Predicted ${fmtPct0(d.bswPct)}${d.jeopardyPct !== null ? `, Install in Jeopardy ${fmtPct0(d.jeopardyPct)}` : ""}).` : "."),
       );
     } else if (d.rootCause === "operational") {
-      paras.push(`Company-side and network-readiness signals are rising, so the data points toward an **operational readiness issue** rather than customer behaviour alone.`);
+      paras.push(`Company side and network readiness signals are rising, indicating an **operational readiness issue** rather than customer behaviour alone.`);
     } else {
-      paras.push(`Customer-side and operational signals both moved, so the root cause is **mixed** — drill into timing and reasons to separate them.`);
+      paras.push(`Customer side and operational signals both moved; the root cause is **mixed**, and the timing and reason views separate the two.`);
     }
   } else {
     paras.push(
-      `**${M} looks stable.** Cancellations moved ${cm} on ${sm} sales growth, with a cancel rate of ${fmtPct(d.cancelRate)} (${fmtPct(d.prevCancelRate)} prior) — within normal month-to-month variation.`,
+      `**${M} performance is in line with trend.** Cancellations moved ${cm} against ${sm} sales growth, with a cancel rate of ${fmtPct(d.cancelRate)} (${fmtPct(d.prevCancelRate)} prior), which is within normal monthly variation.`,
     );
-    if (d.postPct !== null) paras.push(`Post-ODD accounts for ${fmtPct0(d.postPct)} of cancellations and ${d.dominantClass?.label ?? "Customer Miss"} remains the dominant classification. No significant operational anomaly is present.`);
+    if (d.postPct !== null) paras.push(`Post ODD accounts for ${fmtPct0(d.postPct)} of cancellations and ${d.dominantClass?.label ?? "Customer Miss"} remains the dominant classification. No material exception is present.`);
   }
 
-  chips.push({ label: "Cancellations", value: cm, tone: d.anomaly ? "bad" : "neutral" });
-  chips.push({ label: "Unique Sales", value: sm, tone: "neutral" });
-  if (d.postPct !== null) chips.push({ label: "Post-ODD share", value: fmtPct0(d.postPct), tone: d.anomaly ? "bad" : "neutral" });
-  if (d.hotspot && d.anomaly) chips.push({ label: "Hotspot", value: d.hotspot.state, tone: "bad" });
+  chips.push({ label: "Cancellations", value: cm, tone: (d.cancelsMoM ?? 0) > 0 ? "bad" : "good" });
+  chips.push({ label: "Unique Sales", value: sm, tone: (d.salesMoM ?? 0) >= 0 ? "good" : "bad" });
 
   return {
     headline: d.anomaly ? `${M}: cancellations ${cm}, sales ${sm}` : `${M}: performance in line with trend`,
@@ -179,13 +173,70 @@ export function executiveSummary(model: DataModel, month: MonthKey): ExecSummary
   };
 }
 
+// ------------------------------------------------------------------ focus insight (Cancellations page)
+export type FocusKind = "timing" | "miss" | "class";
+
+export interface FocusInsight {
+  title: string;
+  text: string;
+  focusState: string | null;
+  focusChannel: string | null;
+  /** States ranked by the tab's focus measure. */
+  ranked: { state: string; value: number | null; growth: number | null; share: number | null }[];
+  valueLabel: string;
+  unit: "count" | "pct";
+}
+
+export function focusInsight(model: DataModel, month: MonthKey, kind: FocusKind): FocusInsight {
+  const pm = prevMonth(model, month);
+  const key = kind === "timing" ? "postCancels" : kind === "miss" ? "custMiss" : "custPct";
+  const label = kind === "timing" ? "Post ODD cancellations" : kind === "miss" ? "Customer Miss cancellations" : "Customer Miss share";
+  const port = getSnapshot(model, month, null);
+  const portPrev = pm ? getSnapshot(model, pm, null) : null;
+  const portInc = kind === "class" ? null : (port[key] ?? 0) - (portPrev?.[key] ?? 0);
+  const ranked = model.states
+    .map((st) => {
+      const s = getSnapshot(model, month, st), p = pm ? getSnapshot(model, pm, st) : null;
+      const v = s[key] ?? null, pv = p?.[key] ?? null;
+      const growth = v !== null && pv ? (kind === "class" ? v - pv : v / pv - 1) : null;
+      return { state: st, value: v, growth, share: portInc && v !== null && pv !== null ? (v - pv) / portInc : null };
+    })
+    .sort((a, b) => (b.growth ?? -Infinity) - (a.growth ?? -Infinity));
+  const top = ranked[0];
+  const chs = model.channelNames.map((c) => {
+    const s = getSnapshot(model, month, `ch:${c}`), p = pm ? getSnapshot(model, pm, `ch:${c}`) : null;
+    const v = s[key] ?? null, pv = p?.[key] ?? null;
+    return { c, growth: v !== null && pv ? (kind === "class" ? v - pv : v / pv - 1) : null };
+  }).sort((a, b) => (b.growth ?? -Infinity) - (a.growth ?? -Infinity));
+  const topCh = chs[0] && (chs[0].growth ?? 0) > (kind === "class" ? 0.02 : 0.15) ? chs[0] : null;
+  const g = (x: number | null) => (kind === "class" ? fmtPp(x) : fmtSignedPct(x));
+  const focusState = top && (top.growth ?? 0) > (kind === "class" ? 0.02 : 0.15) ? top.state : null;
+  const M = monthName(month);
+
+  let text: string;
+  if (!pm) text = `${M} is the first month in the dataset; a ranking by change is not yet available.`;
+  else if (!focusState) text = `${label} moved within the normal range in every state in ${M}. No focus state is required this month.`;
+  else {
+    const rest = ranked.slice(1).map((r) => r.growth).filter((x): x is number => x !== null);
+    text =
+      `**${focusState}** is the focus state: ${label} ${kind === "class" ? "moved" : "changed"} ${g(top.growth)} in ${M}` +
+      `${top.share !== null ? `, accounting for **${fmtPct0(top.share)}** of the portfolio increase` : ""}. ` +
+      `${rest.length ? `All other states ranged from ${g(Math.min(...rest))} to ${g(Math.max(...rest))}. ` : ""}` +
+      (topCh ? `By channel, **${topCh.c}** shows the sharpest movement (${g(topCh.growth)}) and is the focus channel.` : "No single channel stands out.");
+  }
+  return {
+    title: kind === "timing" ? "Where is Post ODD growth concentrated?" : kind === "miss" ? "Where is Customer Miss growth concentrated?" : "Where is the Customer Miss share rising?",
+    text, focusState, focusChannel: topCh?.c ?? null, ranked, valueLabel: label, unit: kind === "class" ? "pct" : "count",
+  };
+}
+
 // ------------------------------------------------------------------ insights
 export type Severity = "critical" | "high" | "medium" | "low";
 
 export interface Insight {
   id: string;
   severity: Severity;
-  metric: { label: string; value: string; delta?: string };
+  metric: { label: string; value: string; delta?: string; tone?: "bad" | "good" };
   title: string;
   insight: string;
   evidence: string[];
@@ -202,7 +253,6 @@ export function buildInsights(model: DataModel, month: MonthKey): Insight[] {
   const cur = getSnapshot(model, month, null);
   const pv = getSnapshot(model, d.prev, null);
   const M = monthName(month);
-  const P = monthShort(d.prev);
   const hot = d.hotspot;
   const q = `month=${month}`;
 
@@ -210,18 +260,48 @@ export function buildInsights(model: DataModel, month: MonthKey): Insight[] {
     out.push({
       id: "cancel-mom",
       severity: d.anomaly ? "critical" : "low",
-      metric: { label: "Total cancellations", value: fmtInt(cur.cancels), delta: fmtSignedPct(d.cancelsMoM) },
-      title: d.anomaly ? `${M} cancellations increased ${fmtSignedPct(d.cancelsMoM).replace("+", "")} MoM` : `${M} cancellations are within normal range (${fmtSignedPct(d.cancelsMoM)} MoM)`,
+      metric: { label: "Total cancellations", value: fmtInt(cur.cancels), delta: fmtSignedPct(d.cancelsMoM), tone: d.cancelsMoM > 0 ? "bad" : "good" },
+      title: d.anomaly ? `${M} cancellations increased ${abs(fmtSignedPct(d.cancelsMoM))} month over month` : `${M} cancellations are within the normal range (${fmtSignedPct(d.cancelsMoM)})`,
       insight: d.anomaly
-        ? `The move is far outside the ~${fmtPct(assess(model, kpiById("cancels")!, month, null).baseline, 0)} typical month-to-month movement seen earlier in the year, and sales grew only ${fmtSignedPct(d.salesMoM)}.`
-        : `Cancellations track sales growth (${fmtSignedPct(d.salesMoM)}), so no intervention is signalled.`,
+        ? `The movement is well outside the typical monthly change of about ${fmtPct(assess(model, kpiById("cancels")!, month, null).baseline, 0)} observed earlier in the year, while sales moved ${fmtSignedPct(d.salesMoM)}.`
+        : `Cancellations are tracking sales growth (${fmtSignedPct(d.salesMoM)}); no intervention is indicated.`,
       evidence: [
-        `Cancels ${fmtInt(pv.cancels)} → ${fmtInt(cur.cancels)}; sales ${fmtInt(pv.sales)} → ${fmtInt(cur.sales)}`,
-        `Cancel rate ${fmtPct(d.prevCancelRate)} → ${fmtPct(d.cancelRate)}`,
-        ...(d.excess && d.anomaly ? [`≈${fmtInt(Math.round(d.excess.excess))} cancellations above what the ${fmtPct(d.excess.baselineRate)} baseline rate would produce`] : []),
+        `Cancellations ${fmtInt(pv.cancels)} to ${fmtInt(cur.cancels)}; sales ${fmtInt(pv.sales)} to ${fmtInt(cur.sales)}`,
+        `Cancel rate ${fmtPct(d.prevCancelRate)} to ${fmtPct(d.cancelRate)}`,
+        ...(d.excess && d.anomaly ? [`Approximately ${fmtInt(Math.round(d.excess.excess))} cancellations above the ${fmtPct(d.excess.baselineRate)} baseline rate`] : []),
       ],
-      action: d.anomaly ? "Move downstream: check where in the lifecycle (ODD timing) and which markets drive the increase." : "Keep monitoring; no action required.",
-      explore: { label: "Explore", href: `/insights?${q}#cancel-mom` },
+      action: d.anomaly ? "Review where in the lifecycle the increase occurs and which markets and channels drive it." : "Continue routine monitoring.",
+      explore: { label: "Explore cancellations", href: `/cancellations?${q}` },
+    });
+  }
+
+  if (hot && d.anomaly && hot.cancelsMoM !== null) {
+    out.push({
+      id: "hotspot",
+      severity: "high",
+      metric: { label: `${hot.state} cancellations`, value: fmtInt(hot.cancels), delta: fmtSignedPct(hot.cancelsMoM), tone: "bad" },
+      title: `${hot.state} cancellations increased ${abs(fmtSignedPct(hot.cancelsMoM))}`,
+      insight: `${hot.state} contributes ${fmtPct0(hot.contribution)} of the portfolio cancellation increase${d.runnerUpGrowth !== null ? `; the next highest state moved ${fmtSignedPct(d.runnerUpGrowth)}` : ""}.`,
+      evidence: [
+        `Cancel rate ${fmtPct(hot.cancelRate)}; Post ODD ${fmtPct0(hot.postPct)}; Customer Miss ${fmtPct0(hot.custPct)}`,
+        ...(hot.pendingPct !== null ? [`Pending Customer Contact ${fmtPct0(hot.pendingPct)}`] : []),
+      ],
+      action: `Prioritise ${hot.state} appointment readiness actions before any footprint wide change.`,
+      explore: { label: `Open ${hot.state} plan`, href: `/states/${stateSlug(hot.state)}?${q}` },
+    });
+  }
+
+  const fc = d.focusChannel;
+  if (fc && d.anomaly && (fc.contribution ?? 0) > 0.25) {
+    out.push({
+      id: "channel",
+      severity: "high",
+      metric: { label: `${fc.channel} cancellations`, value: fmtInt(fc.cancels), delta: fmtSignedPct(fc.cancelsMoM), tone: "bad" },
+      title: `${fc.channel} is the focus channel`,
+      insight: `${fc.channel} accounts for ${fmtPct0(fc.contribution)} of the cancellation increase at a ${fmtPct(fc.cancelRate)} cancel rate; the remaining channels moved considerably less.`,
+      evidence: [`Post ODD ${fmtPct0(fc.postPct)}; Customer Miss ${fmtPct0(fc.custPct)}; Pending Customer Contact ${fmtPct0(fc.pendingPct)}`],
+      action: `Review ${fc.channel} order quality and expectation setting at the point of sale.`,
+      explore: { label: `Open ${fc.channel} plan`, href: `/channels/${stateSlug(fc.channel)}?${q}` },
     });
   }
 
@@ -231,52 +311,34 @@ export function buildInsights(model: DataModel, month: MonthKey): Insight[] {
       out.push({
         id: "post-odd",
         severity: shift > 0 ? "high" : "low",
-        metric: { label: "Post-ODD share", value: fmtPct0(d.postPct), delta: fmtPp(shift) },
-        title: `Post-ODD cancellations ${shift > 0 ? "increased" : "decreased"} from ${fmtPct0(d.prevPostPct)} to ${fmtPct0(d.postPct)}`,
-        insight: shift > 0 ? "Customers are now being lost late — after the committed date has passed — rather than early in the order life-cycle." : "The mix is moving toward earlier cancellations.",
+        metric: { label: "Post ODD share", value: fmtPct0(d.postPct), delta: fmtPp(shift), tone: shift > 0 ? "bad" : "good" },
+        title: `Post ODD cancellations ${shift > 0 ? "increased" : "decreased"} from ${fmtPct0(d.prevPostPct)} to ${fmtPct0(d.postPct)}`,
+        insight: shift > 0 ? "Customers are increasingly lost late in the order lifecycle, after the committed date has passed." : "The mix is moving toward earlier cancellations.",
         evidence: [
-          `Post-ODD cancels: ${fmtInt(d.prevPostCancels)} → ${fmtInt(d.postCancels)}${d.postCancels !== null && d.prevPostCancels ? ` (${fmtSignedPct(d.postCancels / d.prevPostCancels - 1)})` : ""}`,
-          `Pre-ODD share ${fmtPct0(pv.prePct)} → ${fmtPct0(cur.prePct)}; On-ODD ${fmtPct0(pv.onPct)} → ${fmtPct0(cur.onPct)}`,
+          `Post ODD cancellations ${fmtInt(d.prevPostCancels)} to ${fmtInt(d.postCancels)}${d.postCancels !== null && d.prevPostCancels ? ` (${fmtSignedPct(d.postCancels / d.prevPostCancels - 1)})` : ""}`,
+          `Pre ODD share ${fmtPct0(pv.prePct)} to ${fmtPct0(cur.prePct)}; On ODD ${fmtPct0(pv.onPct)} to ${fmtPct0(cur.onPct)}`,
         ],
-        action: "Focus on late-stage appointment and contact breakdowns; trigger rescue at the first ODD miss.",
-        explore: { label: "Explore timing", href: `/cancellations?tab=timing&bucket=post&${q}` },
+        action: "Focus on late stage appointment and customer contact breakdowns.",
+        explore: { label: "Explore timing", href: `/cancellations?tab=timing&${q}` },
       });
     }
   }
 
-  if (hot && d.anomaly && hot.cancelsMoM !== null) {
-    out.push({
-      id: "hotspot",
-      severity: "high",
-      metric: { label: `${hot.state} cancellations`, value: fmtInt(hot.cancels), delta: fmtSignedPct(hot.cancelsMoM) },
-      title: `${hot.state} cancellations increased approximately ${fmtSignedPct(hot.cancelsMoM).replace("+", "")}`,
-      insight: `${hot.state} contributes ${fmtPct0(hot.contribution)} of the portfolio's cancellation increase${d.runnerUpGrowth !== null ? `; the next-fastest state grew ${fmtSignedPct(d.runnerUpGrowth)}` : ""}.`,
-      evidence: [
-        `Cancel rate ${fmtPct(hot.cancelRate)}; Post-ODD ${fmtPct0(hot.postPct)}; Customer Miss ${fmtPct0(hot.custPct)}`,
-        ...(hot.pendingPct !== null ? [`Pending Customer Contact ${fmtPct0(hot.pendingPct)}`] : []),
-      ],
-      action: `Prioritise a ${hot.state} customer-rescue pilot before any network-wide intervention.`,
-      explore: { label: `Explore ${hot.state}`, href: `/states?${q}` },
-    });
-  }
-
-  if (d.pendingPct !== null && d.pendingDelta !== null) {
+  if (d.pendingPct !== null && d.pendingDelta !== null && d.pendingDelta > 0.02) {
     const a = assess(model, kpiById("pending")!, month, null);
-    if (d.pendingDelta > 0.02) {
-      out.push({
-        id: "pending",
-        severity: a.anomaly ? "medium" : "low",
-        metric: { label: "Pending Customer Contact", value: fmtPct0(d.pendingPct), delta: fmtPp(d.pendingDelta) },
-        title: `Pending Customer Contact increased materially (${fmtPct0(pv.pendingPct)} → ${fmtPct0(d.pendingPct)})`,
-        insight: "Unresolved customer contact is the strongest early-warning signal — visible before the cancellation happens.",
-        evidence: [
-          `Install in Jeopardy ${fmtPct0(d.jeopardyPct)} and BSW Delay Predicted ${fmtPct0(d.bswPct)} remain low by comparison`,
-          `≈${fmtInt(Math.round(d.pendingPct * (cur.cancels ?? 0)))} ${M} cancellations carried this signal`,
-        ],
-        action: "Use Pending Customer Contact as an automated rescue trigger.",
-        explore: { label: "Explore Watchtower", href: `/watchtower?${q}` },
-      });
-    }
+    out.push({
+      id: "pending",
+      severity: a.anomaly ? "medium" : "low",
+      metric: { label: "Pending Customer Contact", value: fmtPct0(d.pendingPct), delta: fmtPp(d.pendingDelta), tone: "bad" },
+      title: `Pending Customer Contact increased materially (${fmtPct0(pv.pendingPct)} to ${fmtPct0(d.pendingPct)})`,
+      insight: "Unresolved customer contact is the strongest early warning signal and is visible before the cancellation occurs.",
+      evidence: [
+        `Install in Jeopardy ${fmtPct0(d.jeopardyPct)} and BSW Delay Predicted ${fmtPct0(d.bswPct)} remain low by comparison`,
+        `Approximately ${fmtInt(Math.round(d.pendingPct * (cur.cancels ?? 0)))} ${M} cancellations carried this signal`,
+      ],
+      action: "Use Pending Customer Contact as the trigger for proactive outreach.",
+      explore: { label: "Explore Watchtower", href: `/watchtower?${q}` },
+    });
   }
 
   const late = reasonStats(model, month, null).filter((r) => r.lateStage && r.mom !== null && r.mom > 0.25);
@@ -284,26 +346,12 @@ export function buildInsights(model: DataModel, month: MonthKey): Insight[] {
     out.push({
       id: "late-drivers",
       severity: "medium",
-      metric: { label: "Late-stage customer misses", value: fmtInt(late.reduce((a, r) => a + (r.count ?? 0), 0)), delta: "" },
-      title: `${late.map((r) => shortReason(r.label)).join(", ")} surged`,
-      insight: "These reasons describe customers who are not ready or available at appointment time — an engagement problem, not a build problem.",
-      evidence: late.map((r) => `${r.label}: ${fmtInt(r.prevCount)} → ${fmtInt(r.count)} (${fmtSignedPct(r.mom)})`),
-      action: "Add confirmation and one-click rescheduling ahead of the technician visit.",
+      metric: { label: "Late stage Customer Miss", value: fmtInt(late.reduce((a, r) => a + (r.count ?? 0), 0)), tone: "bad" },
+      title: `${late.map((r) => shortReason(r.label)).join(", ")} increased sharply`,
+      insight: "These reasons describe customers who are not ready or available at the appointment: an engagement issue rather than a build issue.",
+      evidence: late.map((r) => `${r.label}: ${fmtInt(r.prevCount)} to ${fmtInt(r.count)} (${fmtSignedPct(r.mom)})`),
+      action: "Introduce confirmation and guided rebooking ahead of the technician visit.",
       explore: { label: "Review Customer Miss", href: `/cancellations?tab=miss&${q}` },
-    });
-  }
-
-  const inst = d.installsMoM;
-  if (inst !== null && inst < 0 && (d.salesMoM ?? 0) > 0) {
-    out.push({
-      id: "installs",
-      severity: "medium",
-      metric: { label: "Installs", value: fmtInt(cur.installs), delta: fmtSignedPct(inst) },
-      title: `Installs fell ${fmtSignedPct(inst).replace("−", "")} despite ${fmtSignedPct(d.salesMoM)} higher sales`,
-      insight: `Install conversion dropped from ${fmtPct(pv.installs && pv.sales ? pv.installs / pv.sales : null)} to ${fmtPct(cur.installs && cur.sales ? cur.installs / cur.sales : null)} of sales${cur.onTimePct !== null && pv.onTimePct !== null ? `; on-time installs ${fmtPct0(pv.onTimePct)} → ${fmtPct0(cur.onTimePct)}` : ""}.`,
-      evidence: [`Installs ${fmtInt(pv.installs)} → ${fmtInt(cur.installs)}`],
-      action: "Track the recovered installs once the rescue workflow is live.",
-      explore: { label: "Sales → Install journey", href: `/journey?${q}` },
     });
   }
 
@@ -311,11 +359,11 @@ export function buildInsights(model: DataModel, month: MonthKey): Insight[] {
     out.push({
       id: "not-bsw",
       severity: "low",
-      metric: { label: "BSW Delay Predicted", value: fmtPct0(d.bswPct), delta: "" },
-      title: "Network / BSW readiness is not the driver",
-      insight: "Predictive BSW and jeopardy signals stayed low while customer-contact signals rose, ruling out a broad network readiness issue.",
-      evidence: [`Install in Jeopardy ${fmtPct0(d.jeopardyPct)} · Company Miss ${fmtPct0(cur.coPct)} (${fmtPct0(pv.coPct)} prior)`],
-      action: "Do not divert network capacity; keep the operational watch in place.",
+      metric: { label: "BSW Delay Predicted", value: fmtPct0(d.bswPct) },
+      title: "Network and BSW readiness are not the driver",
+      insight: "Predictive BSW and jeopardy signals stayed low while customer contact signals rose, which rules out a broad network readiness issue.",
+      evidence: [`Install in Jeopardy ${fmtPct0(d.jeopardyPct)}; Company Miss ${fmtPct0(cur.coPct)} (${fmtPct0(pv.coPct)} prior)`],
+      action: "Maintain the current operational watch; no diversion of network capacity is required.",
       explore: { label: "Explore Watchtower", href: `/watchtower?${q}` },
     });
   }
@@ -330,80 +378,155 @@ export interface ActionItem {
   id: string;
   title: string;
   owner: string;
+  ownerEmail: string;
   priority: Priority;
   market: string;
   population: number | null;
   populationLabel: string;
   impact: string;
   why: string;
+  evidence: string[];
+  request: string;
+  measures: string[];
   href: string;
+  hrefLabel: string;
 }
+
+/** Task owner mailboxes. Edit here to route initiated actions to the right teams. */
+export const OWNER_EMAILS: Record<string, string> = {
+  "Customer Operations": "customer.operations@brightspeed.com",
+  "Customer Care": "customer.care@brightspeed.com",
+  "D2D Sales Leadership": "d2d.sales@brightspeed.com",
+  "Field Operations": "field.operations@brightspeed.com",
+  "Insights and BI": "insights.bi@brightspeed.com",
+  "Network Operations": "network.operations@brightspeed.com",
+};
 
 export function buildActions(model: DataModel, month: MonthKey): ActionItem[] {
   const d = diagnose(model, month);
-  const cur = getSnapshot(model, month, null);
   const hot = d.hotspot;
   const market = hot && d.anomaly ? hot.state : "All markets";
   const scope = hot && d.anomaly ? hot.state : null;
-  const scopeSnap = scope ? getSnapshot(model, month, scope) : cur;
-  const rescuePop = scopeSnap.postCancels ?? (scopeSnap.cancels !== null && scopeSnap.postPct !== null ? Math.round(scopeSnap.cancels * scopeSnap.postPct) : null);
-  const resched = scopeSnap[`reason:${nk(REASON_LABELS.resched)}`] ?? null;
-  const pendingPop = scopeSnap.pendingPct !== null && scopeSnap.cancels !== null ? Math.round(scopeSnap.pendingPct * scopeSnap.cancels) : null;
-  const lateTotal = ["noAccess", "resched", "tech"].reduce((a, k) => a + (scopeSnap[`reason:${nk(REASON_LABELS[k as keyof typeof REASON_LABELS])}`] ?? 0), 0);
+  const s = getSnapshot(model, month, scope);
+  const port = getSnapshot(model, month, null);
+  const r = (k: keyof typeof REASON_LABELS) => s[`reason:${nk(REASON_LABELS[k])}`] ?? null;
+  const pendingPop = s.pendingPct !== null && s.cancels !== null ? Math.round(s.pendingPct * s.cancels) : null;
+  const fc = d.focusChannel && (d.focusChannel.contribution ?? 0) > 0.25 ? d.focusChannel : null;
+  const fcSc = fc && scope ? model.stateChannel.find((x) => x.state === scope && x.channel === fc.channel) : null;
   const q = `month=${month}`;
+  const where = scope ?? "the portfolio";
+  const P = (hi: Priority, lo: Priority): Priority => (d.anomaly ? hi : lo);
+  const own = (o: string) => ({ owner: o, ownerEmail: OWNER_EMAILS[o] ?? "" });
 
-  return [
+  const list: ActionItem[] = [
     {
-      id: "rescue", title: "Post-ODD Customer Rescue", owner: "Customer Care / COR", priority: d.anomaly ? "Critical" : "Medium", market,
-      population: rescuePop, populationLabel: `Post-ODD cancels in ${scope ?? "portfolio"} (${monthShort(month)})`,
-      impact: `Reduce avoidable Customer Miss — the ${fmtInt(lateTotal)} No-Access, Reschedule and Tech-on-Job cancels are the addressable core.`,
-      why: `Post-ODD is ${fmtPct0(scopeSnap.postPct)} of cancels and Customer Miss is ${fmtPct0(scopeSnap.custPct)} in ${scope ?? "the portfolio"}.`,
-      href: `/actions?${q}#rescue`,
+      id: "confirm", title: "Appointment Confirmation Outreach", ...own("Customer Operations"), priority: P("Critical", "Medium"), market,
+      population: pendingPop, populationLabel: `${monthShort(month)} cancellations that carried Pending Customer Contact`,
+      impact: "Convert unresolved customer contact into a confirmed appointment before the Original Due Date.",
+      why: `Pending Customer Contact reached ${fmtPct0(s.pendingPct)} in ${where}, against ${fmtPct0(port.pendingPct)} for the portfolio.`,
+      evidence: [
+        `Pending Customer Contact ${fmtPct0(s.pendingPct)} of ${where} cancellations`,
+        `Post ODD share ${fmtPct0(s.postPct)} of ${fmtInt(s.cancels)} cancellations`,
+        `Install in Jeopardy ${fmtPct0(s.jeopardyPct)} and BSW Delay Predicted ${fmtPct0(s.bswPct)}, confirming a customer readiness driver`,
+      ],
+      request: "Trigger SMS and email confirmation 48 hours before every appointment where Watchtower shows Pending Customer Contact, with an agent call if there is no response within 24 hours.",
+      measures: ["Pending Customer Contact share", "Post ODD cancellation share", "No Access / Not Home cancellations"],
+      href: `/watchtower?${q}`, hrefLabel: "Open Watchtower",
     },
     {
-      id: "confirm", title: "Appointment Confirmation", owner: "Customer Operations", priority: d.anomaly ? "High" : "Medium", market,
-      population: pendingPop, populationLabel: `Cancels that carried Pending Customer Contact`,
-      impact: "Convert unresolved contact into a confirmed appointment before the ODD.",
-      why: `Pending Customer Contact is the strongest leading signal (${fmtPct0(scopeSnap.pendingPct)}).`,
-      href: `/watchtower?${q}`,
+      id: "reschedule", title: "Guided Rebooking for Reschedules", ...own("Customer Care"), priority: P("High", "Medium"), market,
+      population: r("resched"), populationLabel: "Reschedule driven cancellations",
+      impact: "Prevent repeat reschedules from ending in cancellation through guided rebooking and agent follow up on the second request.",
+      why: `Customer Requested Reschedule is among the fastest growing Customer Miss reasons in ${where}.`,
+      evidence: reasonStats(model, month, scope).filter((x) => x.lateStage).map((x) => `${x.label}: ${fmtInt(x.prevCount)} to ${fmtInt(x.count)} (${fmtSignedPct(x.mom)})`),
+      request: "Route every second reschedule request to a dedicated agent queue and offer the earliest available slot during the same interaction.",
+      measures: ["Customer Requested Reschedule cancellations", "Share of reschedules rebooked within 7 days"],
+      href: `/cancellations?tab=miss&${q}${scope ? `&state=${stateSlug(scope)}` : ""}`, hrefLabel: "Review Customer Miss",
+    },
+    ...(fc
+      ? [{
+          id: "channel", title: `${fc.channel} Order Quality and Expectation Setting`, ...own(fc.channel === "D2D" ? "D2D Sales Leadership" : "Customer Operations"), priority: P("High", "Medium"),
+          market: scope ? `${scope}, ${fc.channel}` : fc.channel,
+          population: fcSc?.cancels ?? fc.cancels, populationLabel: `${scope ? `${scope} ` : ""}${fc.channel} cancellations (${monthShort(month)})`,
+          impact: "Improve install readiness at the point of sale: confirmed contact details, access information and customer availability.",
+          why: `${fc.channel} contributes ${fmtPct0(fc.contribution)} of the cancellation increase${fcSc ? `; the ${scope} ${fc.channel} cancel rate is ${fmtPct(fcSc.cancelRate)}` : ""}.`,
+          evidence: [
+            `${fc.channel} cancellations ${fmtSignedPct(fc.cancelsMoM)}; cancel rate ${fmtPct(fc.cancelRate)}`,
+            ...(fcSc ? [`${scope} ${fc.channel}: ${fmtInt(fcSc.cancels)} cancellations, Post ODD ${fmtPct0(fcSc.postPct)}, Pending Customer Contact ${fmtPct0(fcSc.pendingPct)}`] : []),
+          ],
+          request: `Reinforce appointment expectation setting in the ${fc.channel} sales script, verify contact and access details at order entry, and review representative level cancellation rates weekly.`,
+          measures: [`${fc.channel} cancel rate`, `${fc.channel} Pending Customer Contact share`],
+          href: `/channels/${stateSlug(fc.channel)}?${q}`, hrefLabel: `Open ${fc.channel} plan`,
+        } as ActionItem]
+      : []),
+    {
+      id: "field", title: "Technician Arrival Confirmation", ...own("Field Operations"), priority: P("High", "Low"), market,
+      population: (r("noAccess") ?? 0) + (r("tech") ?? 0), populationLabel: "No Access and Tech on Job cancellations",
+      impact: "Reduce failed visits and cancellations after dispatch by confirming access and intent on the day of the appointment.",
+      why: "No Access / Not Home and Cancelled while Tech on Job both represent cancellations after field effort has been committed.",
+      evidence: [`No Access / Not Home ${fmtInt(r("noAccess"))}`, `Cancelled while Tech on Job ${fmtInt(r("tech"))}`, `On Time Install ${fmtPct0(s.onTimePct)}`],
+      request: "Introduce a technician en route notification with a confirm or reschedule option, and require confirmation of access before dispatch for orders flagged Pending Customer Contact.",
+      measures: ["No Access / Not Home cancellations", "Cancelled while Tech on Job", "On Time Install %"],
+      href: `/cancellations?tab=miss&${q}`, hrefLabel: "Review Customer Miss",
     },
     {
-      id: "reschedule", title: "Reschedule Recovery", owner: "Customer Care", priority: d.anomaly ? "High" : "Medium", market,
-      population: resched, populationLabel: "Reschedule-driven cancellations",
-      impact: "Stop repeat reschedules ending in cancellation with one-click rebooking and agent follow-up on the second request.",
-      why: "Repeated rescheduling is a major Post-ODD risk.",
-      href: `/cancellations?tab=miss&${q}`,
-    },
-    {
-      id: "monitor", title: "Closed-loop outcome tracking", owner: "Insights / BI", priority: "Medium", market: "All markets",
+      id: "monitor", title: "Closed Loop Outcome Tracking", ...own("Insights and BI"), priority: "Medium", market: "All markets",
       population: null, populationLabel: "Tracking, not a population",
-      impact: "Show whether Post-ODD share, No Access, Reschedule and Tech-on-Job cancels fall after launch.",
-      why: "Answers the question 'is the action working?'.", href: `/cancellations?tab=timing&${q}`,
+      impact: "Demonstrate whether the actions are working by tracking the leading and lagging measures weekly.",
+      why: "Provides the evidence base for continuing, scaling or adjusting each action.",
+      evidence: [`Baseline for ${monthLabel(month)}: cancel rate ${fmtPct(port.cancelRate)}, Post ODD ${fmtPct0(port.postPct)}, Pending Customer Contact ${fmtPct0(port.pendingPct)}`],
+      request: "Publish a weekly scorecard covering Post ODD share, Pending Customer Contact, the late stage Customer Miss reasons and cancel rate, split by state and channel.",
+      measures: ["Weekly scorecard published", "Trend against the baseline month"],
+      href: `/cancellations?tab=timing&${q}`, hrefLabel: "Open timing analysis",
     },
     {
-      id: "netwatch", title: "Keep network-readiness watch", owner: "Network Operations", priority: "Low", market: "All markets",
+      id: "netwatch", title: "Maintain Network Readiness Watch", ...own("Network Operations"), priority: "Low", market: "All markets",
       population: null, populationLabel: "Monitoring only",
-      impact: "Maintain current BSW / jeopardy monitoring; no diversion of capacity needed.",
-      why: `BSW Delay Predicted ${fmtPct0(cur.bswPct)} and Install in Jeopardy ${fmtPct0(cur.jeopardyPct)} are not driving the change.`,
-      href: `/watchtower?${q}`,
+      impact: "Maintain current BSW and jeopardy monitoring; no diversion of capacity is required.",
+      why: `BSW Delay Predicted ${fmtPct0(port.bswPct)} and Install in Jeopardy ${fmtPct0(port.jeopardyPct)} are not driving the change.`,
+      evidence: [`BSW Delay Predicted ${fmtPct0(port.bswPct)}`, `Install in Jeopardy ${fmtPct0(port.jeopardyPct)}`, `Company Miss ${fmtPct0(port.coPct)}`],
+      request: "Continue the standard readiness review and escalate only if BSW Delay Predicted or Install in Jeopardy rises by more than two points.",
+      measures: ["BSW Delay Predicted %", "Install in Jeopardy %"],
+      href: `/watchtower?${q}`, hrefLabel: "Open Watchtower",
     },
   ];
+  return list;
 }
 
-export const RESCUE_FLOW: { label: string; kind: "step" | "decision" | "end" }[] = [
-  { label: "ODD missed / rescheduled", kind: "step" },
-  { label: "Check Customer Miss risk", kind: "step" },
-  { label: "Pending customer contact?", kind: "decision" },
-  { label: "Send automated SMS confirmation", kind: "step" },
-  { label: "Offer one-click reschedule", kind: "step" },
-  { label: "No response?", kind: "decision" },
-  { label: "Create agent call task", kind: "step" },
-  { label: "Repeated reschedule / no-access?", kind: "decision" },
-  { label: "Escalate high-risk rescue", kind: "step" },
-  { label: "Track final install / cancel outcome", kind: "end" },
-];
+/** Email the task owner receives when an action is initiated. */
+export function actionEmail(a: ActionItem, month: MonthKey) {
+  const subject = `Action requested: ${a.title} (${a.market}, ${monthLabel(month)})`;
+  const body = [
+    `Dear ${a.owner} team,`,
+    "",
+    `The Cancellation Intelligence review for ${monthLabel(month)} has identified an action for your team. We would appreciate your support in taking this forward.`,
+    "",
+    `Action: ${a.title}`,
+    `Priority: ${a.priority}`,
+    `Market: ${a.market}`,
+    ...(a.population !== null ? [`Affected population: ${a.population.toLocaleString("en-US")} (${a.populationLabel})`] : []),
+    "",
+    "Why this matters:",
+    a.why,
+    "",
+    "Supporting evidence:",
+    ...a.evidence.map((e) => `  • ${e}`),
+    "",
+    "Requested action:",
+    a.request,
+    "",
+    "Success measures:",
+    ...a.measures.map((m) => `  • ${m}`),
+    "",
+    "Could you please confirm ownership and a target start date within the next five business days? We will track progress in the weekly cancellation scorecard.",
+    "",
+    "Kind regards,",
+    "Cancellation Intelligence Team",
+  ].join("\n");
+  return { subject, body };
+}
 
-// ------------------------------------------------------------------ state story
+// ------------------------------------------------------------------ scope story (state or channel plan)
 export interface StoryPoint {
   text: string;
   tone: "bad" | "neutral" | "good";
@@ -418,53 +541,53 @@ export interface StateStory {
   verdict: "customer-readiness" | "operational" | "mixed" | "insufficient";
 }
 
-/** Plain-language read-outs for each section of the state drill-down, generated from the data. */
-export function stateStory(model: DataModel, month: MonthKey, state: string): StateStory {
+/** Plain-language read-outs for each section of a state or channel plan, generated from the data. */
+export function stateStory(model: DataModel, month: MonthKey, scope: string): StateStory {
+  const name = scopeName(scope);
   const pm = prevMonth(model, month);
-  const cur = getSnapshot(model, month, state);
-  const prev = pm ? getSnapshot(model, pm, state) : null;
+  const cur = getSnapshot(model, month, scope);
+  const prev = pm ? getSnapshot(model, pm, scope) : null;
   const port = getSnapshot(model, month, null);
-  const P = pm ? monthName(pm) : "prior month";
+  const P = pm ? monthName(pm) : "the prior month";
   const rel = (a: number | null, b: number | null | undefined) => (a !== null && b ? a / b - 1 : null);
 
   const cMoM = rel(cur.cancels, prev?.cancels), sMoM = rel(cur.sales, prev?.sales);
-  let change: StoryPoint = { text: `${state} has no prior-month comparison in the workbook.`, tone: "neutral" };
+  let change: StoryPoint = { text: `${name} has no prior month comparison available.`, tone: "neutral" };
   if (cMoM !== null && sMoM !== null) {
-    const mult = sMoM > 0.001 ? cMoM / sMoM : null;
+    const bad = cMoM > sMoM + 0.05;
     change = {
-      text:
-        cMoM > sMoM + 0.05
-          ? `${state} cancellations rose ${fmtSignedPct(cMoM).replace("+", "")} vs ${P} while sales grew only ${fmtSignedPct(sMoM).replace("+", "")}${mult && mult > 1.5 ? ` — cancellations increased materially faster than sales (≈${mult.toFixed(0)}×)` : ""}. Cancel rate moved from ${fmtPct(prev?.cancelRate ?? null)} to ${fmtPct(cur.cancelRate)}.`
-          : `${state} cancellations moved ${fmtSignedPct(cMoM)} vs sales ${fmtSignedPct(sMoM)} — broadly in line with volume. Cancel rate ${fmtPct(cur.cancelRate)}.`,
-      tone: cMoM > sMoM + 0.05 ? "bad" : "good",
+      text: bad
+        ? `${name} cancellations rose ${abs(fmtSignedPct(cMoM))} versus ${P} while sales moved ${fmtSignedPct(sMoM)}; cancellations are growing materially faster than demand. The cancel rate moved from ${fmtPct(prev?.cancelRate ?? null)} to ${fmtPct(cur.cancelRate)}.`
+        : `${name} cancellations moved ${fmtSignedPct(cMoM)} against sales of ${fmtSignedPct(sMoM)}, broadly in line with volume. The cancel rate is ${fmtPct(cur.cancelRate)}.`,
+      tone: bad ? "bad" : "good",
     };
   }
 
   const shift = cur.postPct !== null && prev?.postPct != null ? cur.postPct - prev.postPct : null;
   const timing: StoryPoint =
     cur.postPct === null
-      ? { text: "Timing split isn’t available for this selection.", tone: "neutral" }
+      ? { text: "The timing split is not available for this selection.", tone: "neutral" }
       : {
-          text: `${fmtPct0(cur.postPct)} of ${state}’s cancellations happen after the Original Due Date${shift !== null ? ` (${fmtPct0(prev!.postPct)} in ${P}, ${fmtPp(shift)})` : ""}, versus ${fmtPct0(port.postPct)} portfolio-wide${cur.postPct > (port.postPct ?? 1) + 0.03 ? " — a stronger late-stage skew than other markets" : ""}.`,
+          text: `${fmtPct0(cur.postPct)} of ${name} cancellations occur after the Original Due Date${shift !== null ? ` (${fmtPct0(prev!.postPct)} in ${P}, ${fmtPp(shift)})` : ""}, compared with ${fmtPct0(port.postPct)} across the portfolio${cur.postPct > (port.postPct ?? 1) + 0.03 ? "; a stronger late stage concentration than elsewhere" : ""}.`,
           tone: (shift ?? 0) > 0.05 ? "bad" : "neutral",
         };
 
   const who: StoryPoint =
     cur.custPct === null
-      ? { text: "Classification isn’t available for this selection.", tone: "neutral" }
+      ? { text: "Classification is not available for this selection.", tone: "neutral" }
       : {
-          text: `Customer Miss is ${fmtPct0(cur.custPct)} of cancellations (${fmtInt(cur.custMiss)} orders), Company Miss ${fmtPct0(cur.coPct)} and Faux ${fmtPct0(cur.fauxPct)}. ${cur.custPct > (port.custPct ?? 1) ? `That is above the portfolio’s ${fmtPct0(port.custPct)}.` : ""}`,
-          tone: cur.custPct >= 0.6 ? "bad" : "neutral",
+          text: `Customer Miss represents ${fmtPct0(cur.custPct)} of cancellations (${fmtInt(cur.custMiss)} orders), Company Miss ${fmtPct0(cur.coPct)} and Faux ${fmtPct0(cur.fauxPct)}.${cur.custPct > (port.custPct ?? 1) ? ` This is above the portfolio level of ${fmtPct0(port.custPct)}.` : ""}`,
+          tone: cur.custPct >= 0.7 ? "bad" : "neutral",
         };
 
-  const rs = reasonStats(model, month, state);
+  const rs = isChannel(scope) ? [] : reasonStats(model, month, scope);
   const hot = rs.filter((r) => r.lateStage && (r.mom ?? 0) > 0.25);
   const why: StoryPoint = hot.length
-    ? { text: `${hot.map((r) => `${r.label} (${fmtSignedPct(r.mom)})`).join(", ")} ${hot.length > 1 ? "are" : "is"} growing fastest — customers who aren’t available, keep rescheduling, or cancel with the technician on site.`, tone: "bad" }
-    : { text: rs[0] ? `${rs[0].label} is the largest reason (${fmtPct0(rs[0].share)}); no late-stage reason is surging.` : "No reason data for this selection.", tone: "neutral" };
+    ? { text: `${hot.map((r) => `${r.label} (${fmtSignedPct(r.mom)})`).join(", ")} ${hot.length > 1 ? "are" : "is"} growing fastest: customers who are unavailable, repeatedly reschedule, or cancel with the technician on site.`, tone: "bad" }
+    : { text: rs[0] ? `${rs[0].label} is the largest reason (${fmtPct0(rs[0].share)}); no late stage reason is rising sharply.` : "Reason detail is recorded by state rather than by channel.", tone: "neutral" };
 
   const p = cur.pendingPct, b = cur.bswPct, j = cur.jeopardyPct;
-  let seen: StoryPoint = { text: "Watchtower signals for this state aren’t available in the workbook for this month.", tone: "neutral" };
+  let seen: StoryPoint = { text: `Watchtower signals for ${name} are not available for this month.`, tone: "neutral" };
   let verdict: StateStory["verdict"] = "insufficient";
   if (p !== null) {
     const tech = (b ?? 0) + (j ?? 0);
@@ -472,10 +595,11 @@ export function stateStory(model: DataModel, month: MonthKey, state: string): St
     seen = {
       text:
         p > tech
-          ? `Customer-contact warning signals are materially stronger than BSW predictive risk: Pending Customer Contact ${fmtPct0(p)}${prev?.pendingPct != null ? ` (${fmtPct0(prev.pendingPct)} in ${P})` : ""} versus Install in Jeopardy ${fmtPct0(j)} and BSW Delay Predicted ${fmtPct0(b)}. The issue looks like customer engagement / appointment readiness.`
-          : `Technical risk signals (Install in Jeopardy ${fmtPct0(j)}, BSW ${fmtPct0(b)}) are at least as strong as customer-contact signals (${fmtPct0(p)}), so an operational cause can’t be ruled out.`,
+          ? `Customer contact signals are materially stronger than technical risk: Pending Customer Contact ${fmtPct0(p)}${prev?.pendingPct != null ? ` (${fmtPct0(prev.pendingPct)} in ${P})` : ""} against Install in Jeopardy ${fmtPct0(j)} and BSW Delay Predicted ${fmtPct0(b)}. The issue is customer engagement and appointment readiness.`
+          : `Technical risk signals (Install in Jeopardy ${fmtPct0(j)}, BSW ${fmtPct0(b)}) are at least as strong as customer contact signals (${fmtPct0(p)}); an operational cause cannot be ruled out.`,
       tone: p > tech ? "bad" : "neutral",
     };
   }
   return { change, timing, who, why, seen, verdict };
 }
+

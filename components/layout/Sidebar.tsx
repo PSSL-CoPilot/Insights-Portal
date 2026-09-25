@@ -2,16 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, ChevronsLeft, ChevronsRight, CircleSlash, Database, LayoutDashboard, Lightbulb, ListChecks, MapPin, Route } from "lucide-react";
+import { Activity, ChevronsLeft, ChevronsRight, CircleSlash, Database, LayoutDashboard, ListChecks, MapPin, Network, Route } from "lucide-react";
+import type { ComponentType } from "react";
+import { InsightsGlyph } from "../ui/Marks";
 import { useApp } from "../AppContext";
 import { cn } from "../ui/primitives";
 
-export const NAV = [
+export const NAV: { href: string; label: string; icon: ComponentType<{ className?: string; strokeWidth?: number }>; title: string }[] = [
   { href: "/", label: "Command Center", icon: LayoutDashboard, title: "Command Center" },
-  { href: "/insights", label: "Insights", icon: Lightbulb, title: "Insights" },
   { href: "/cancellations", label: "Cancellations", icon: CircleSlash, title: "Cancellations" },
-  { href: "/journey", label: "Sales → Install Journey", icon: Route, title: "Sales → Install Journey" },
-  { href: "/states", label: "States", icon: MapPin, title: "States" },
+  { href: "/states", label: "State Wise Plan", icon: MapPin, title: "State Wise Plan" },
+  { href: "/channels", label: "Channel Wise Plan", icon: Network, title: "Channel Wise Plan" },
+  { href: "/insights", label: "Insights", icon: InsightsGlyph, title: "Insights" },
+  { href: "/journey", label: "Sales to Install Journey", icon: Route, title: "Sales to Install Journey" },
   { href: "/watchtower", label: "Watchtower", icon: Activity, title: "Watchtower" },
   { href: "/actions", label: "Actions", icon: ListChecks, title: "Actions" },
 ];
@@ -19,7 +22,7 @@ export const NAV = [
 export function BrandMark({ size = 36 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden>
-      <rect width="40" height="40" rx="11" fill="#111" />
+      <rect width="40" height="40" rx="11" fill="#111" stroke="#2a2a28" />
       <path d="M11 27.5 18.5 12.5h4.2L15.2 27.5z" fill="#FFC72C" />
       <path d="M19.2 27.5 26.7 12.5h4.2L23.4 27.5z" fill="#FFC72C" opacity=".55" />
     </svg>
@@ -33,7 +36,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-line bg-white transition-[width] duration-300 lg:flex",
+        "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-line bg-card transition-[width] duration-300 lg:flex",
         c ? "w-[76px]" : "w-[252px]",
       )}
     >
@@ -57,7 +60,7 @@ export function Sidebar() {
               title={c ? n.label : undefined}
               className={cn(
                 "group relative flex h-11 items-center gap-3 rounded-xl px-3 text-[13.5px] font-medium transition",
-                on ? "bg-ink text-white shadow-sm" : "text-mute hover:bg-[#f3f3ee] hover:text-ink",
+                on ? "bg-panel text-white shadow-sm" : "text-mute hover:bg-subtle hover:text-ink",
                 c && "justify-center px-0",
               )}
             >
@@ -75,7 +78,7 @@ export function Sidebar() {
           title={c ? "Settings / Data Source" : undefined}
           className={cn(
             "flex h-11 items-center gap-3 rounded-xl px-3 text-[13.5px] font-medium transition",
-            path.startsWith("/settings") ? "bg-ink text-white" : "text-mute hover:bg-[#f3f3ee] hover:text-ink",
+            path.startsWith("/settings") ? "bg-panel text-white" : "text-mute hover:bg-subtle hover:text-ink",
             c && "justify-center px-0",
           )}
         >
@@ -84,7 +87,7 @@ export function Sidebar() {
         </Link>
         <button
           onClick={toggleSidebar}
-          className={cn("flex h-10 w-full items-center gap-3 rounded-xl px-3 text-xs font-medium text-soft transition hover:bg-[#f3f3ee] hover:text-ink", c && "justify-center px-0")}
+          className={cn("flex h-10 w-full items-center gap-3 rounded-xl px-3 text-xs font-medium text-soft transition hover:bg-subtle hover:text-ink", c && "justify-center px-0")}
           aria-label={c ? "Expand sidebar" : "Collapse sidebar"}
         >
           {c ? <ChevronsRight className="size-4" /> : <><ChevronsLeft className="size-4" /> Collapse</>}

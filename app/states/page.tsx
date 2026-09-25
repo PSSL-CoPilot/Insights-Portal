@@ -1,5 +1,5 @@
-import { StatesOverview } from "@/components/drilldown/StatesOverview";
+import { PlanOverview } from "@/components/drilldown/PlanOverview";
 
 export default function StatesPage() {
-  return <StatesOverview />;
+  return <PlanOverview kind="state" />;
 }

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { useApp } from "../AppContext";
 import { InsightCard } from "./InsightCard";
 import { Card, cn, SectionTitle } from "../ui/primitives";
@@ -23,11 +24,11 @@ export function InsightsPage() {
 
   return (
     <div className="space-y-9">
-      <SectionTitle eyebrow={`Insights · ${monthLabel(month)}`} title="What does the data say?" sub="Generated from the workbook: each insight is a rule that fired on this month’s numbers, with its evidence and a recommended next step." />
+      <SectionTitle eyebrow={`Insights · ${monthLabel(month)}`} title="What does the data say?" sub="Generated from the data: each insight reflects this month’s numbers, with its supporting evidence and a recommended next step." />
 
       <div className="flex flex-wrap items-center gap-2.5">
         {SEVS.map((s) => (
-          <button key={s.id} onClick={() => setSev(s.id)} className={cn("rounded-full border px-4 py-1.5 text-[13px] font-semibold transition", sev === s.id ? "border-ink bg-ink text-white" : "border-line bg-white text-mute hover:border-ink hover:text-ink")}>
+          <button key={s.id} onClick={() => setSev(s.id)} className={cn("rounded-full border px-4 py-1.5 text-[13px] font-semibold transition", sev === s.id ? "border-ink bg-panel text-white" : "border-line bg-card text-mute hover:border-ink hover:text-ink")}>
             {s.label}
             <span className={cn("ml-2 text-xs", sev === s.id ? "text-brand" : "text-soft")}>{s.id === "all" ? all.length : count(s.id)}</span>
           </button>
@@ -43,28 +44,36 @@ export function InsightsPage() {
       )}
 
       {model.executiveQuestions.length > 0 && (
-        <section>
-          <SectionTitle eyebrow="From the workbook" title="The five executive questions" sub="Answers authored in the “Executive Questions” sheet — a reference frame for the generated insights above." className="mb-5" />
-          <div className="grid gap-4 lg:grid-cols-2">
+        <details className="group rounded-[18px] border border-line bg-card shadow-card" open={false}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+            <div>
+              <div className="eyebrow mb-1">Executive questions</div>
+              <div className="text-[20px] font-semibold tracking-tight">The five executive questions, answered by the data</div>
+              <div className="mt-1 text-sm text-mute">Expand to read each answer with its evidence and recommended next step.</div>
+            </div>
+            <span className="grid size-10 shrink-0 place-items-center rounded-full border border-line bg-subtle transition group-open:rotate-180"><ChevronDown className="size-4" /></span>
+          </summary>
+          <div className="divide-y divide-line-2 border-t border-line-2">
             {model.executiveQuestions.map((q) => {
               const href = DRILL_HREF[q.drill.toLowerCase().split("/")[0].trim()] ?? "/";
               return (
-                <Card key={q.n} className="p-5">
-                  <div className="flex items-start gap-3">
-                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-ink text-xs font-bold text-brand">{q.n}</span>
-                    <div>
-                      <h4 className="text-[15px] font-semibold leading-snug">{q.question}</h4>
-                      <p className="mt-2 text-[13.5px] leading-relaxed text-ink-2">{q.answer}</p>
-                      {q.evidence && <p className="mt-2 text-xs text-mute"><strong className="text-ink-2">Evidence:</strong> {q.evidence}</p>}
-                      {q.nextStep && <p className="mt-1 text-xs text-mute"><strong className="text-ink-2">Next:</strong> {q.nextStep}</p>}
-                      {q.drill && <Link href={href} className="mt-3 inline-block text-xs font-semibold underline decoration-dotted">Primary drill: {q.drill} →</Link>}
-                    </div>
+                <details key={q.n} className="group/q px-5 sm:px-6">
+                  <summary className="flex cursor-pointer list-none items-center gap-3 py-4 [&::-webkit-details-marker]:hidden">
+                    <span className="bs-gradient grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold text-[#111]">{q.n}</span>
+                    <h4 className="flex-1 text-[15px] font-semibold leading-snug">{q.question}</h4>
+                    <ChevronDown className="size-4 shrink-0 text-mute transition group-open/q:rotate-180" />
+                  </summary>
+                  <div className="pb-5 pl-10">
+                    <p className="text-[14px] leading-relaxed text-ink-2">{q.answer}</p>
+                    {q.evidence && <p className="mt-2 text-[13px] text-mute"><strong className="text-ink-2">Evidence:</strong> {q.evidence}</p>}
+                    {q.nextStep && <p className="mt-1 text-[13px] text-mute"><strong className="text-ink-2">Recommended next step:</strong> {q.nextStep}</p>}
+                    {q.drill && <Link href={href} className="mt-3 inline-flex items-center gap-1 text-xs font-semibold underline decoration-dotted">Open {q.drill} <ArrowRight className="size-3" /></Link>}
                   </div>
-                </Card>
+                </details>
               );
             })}
           </div>
-        </section>
+        </details>
       )}
     </div>
   );

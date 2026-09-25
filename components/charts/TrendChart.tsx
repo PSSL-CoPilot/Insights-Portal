@@ -7,7 +7,7 @@ import type { MonthKey } from "@/lib/data/types";
 import type { SeriesPoint } from "@/lib/data/metrics";
 
 /**
- * Jan→latest trend with a dashed prior-months baseline and a marker on the selected month.
+ * January to latest trend with a dashed prior-months baseline and a marker on the selected month.
  * `anomaly` recolours the marker red so the structural break is visible at a glance.
  */
 export function TrendChart({
@@ -56,17 +56,17 @@ export function TrendChart({
             const p = payload[0].payload as (typeof data)[number];
             const idx = data.findIndex((d) => d.month === p.month);
             const prev = idx > 0 ? data[idx - 1].value : null;
-            const ch = prev !== null && p.value !== null && prev !== 0 ? (unit === "pct" ? `${((p.value - prev) * 100 >= 0 ? "+" : "−")}${Math.abs((p.value - prev) * 100).toFixed(1)} pp` : `${p.value / prev - 1 >= 0 ? "+" : "−"}${Math.abs((p.value / prev - 1) * 100).toFixed(1)}%`) : "—";
+            const ch = prev !== null && p.value !== null && prev !== 0 ? (unit === "pct" ? `${((p.value - prev) * 100 >= 0 ? "+" : "−")}${Math.abs((p.value - prev) * 100).toFixed(1)} pp` : `${p.value / prev - 1 >= 0 ? "+" : "−"}${Math.abs((p.value / prev - 1) * 100).toFixed(1)}%`) : "n/a";
             return <TipCard title={monthLabel(p.month)} rows={[{ label: name, value: fmtVal(p.value), color }, { label: "vs prior month", value: ch }]} />;
           }}
         />
         {baseline !== null && (
           <ReferenceLine y={baseline} stroke={C.slateDeep} strokeDasharray="4 4" strokeOpacity={0.7} label={{ value: `Prior avg ${fmtVal(baseline)}`, position: "insideTopLeft", fill: C.axis, fontSize: 10.5, dy: -6 }} />
         )}
-        <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2.5} fill={`url(#${gid})`} dot={{ r: 3, fill: "#fff", stroke: color, strokeWidth: 2 }} activeDot={{ r: 5 }} connectNulls={false} isAnimationActive animationDuration={700} />
+        <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2.5} fill={`url(#${gid})`} dot={{ r: 3, fill: C.card, stroke: color, strokeWidth: 2 }} activeDot={{ r: 5 }} connectNulls={false} isAnimationActive animationDuration={700} />
         {sel && sel.value !== null && (
-          <ReferenceDot x={sel.label} y={sel.value} r={7} fill={anomaly ? C.bad : color} stroke="#fff" strokeWidth={3}
-            label={anomaly ? { value: "Anomaly", position: "top", fill: C.bad, fontSize: 11, fontWeight: 700 } : undefined} />
+          <ReferenceDot x={sel.label} y={sel.value} r={7} fill={anomaly ? C.bad : color} stroke={C.card} strokeWidth={3}
+            label={anomaly ? { value: "Exception", position: "top", fill: C.bad, fontSize: 11, fontWeight: 700 } : undefined} />
         )}
       </AreaChart>
     </ResponsiveContainer>

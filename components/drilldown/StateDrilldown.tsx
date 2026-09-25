@@ -11,36 +11,38 @@ import { CustomerMissDrivers } from "../charts/CustomerMissDrivers";
 import { WatchtowerSignals } from "../charts/WatchtowerSignals";
 import { ODD_COLORS } from "../charts/ODDTimingChart";
 import { C, TipCard, axisProps } from "../charts/shared";
-import { RescueFlow } from "./RescueFlow";
+import { RankedBars } from "../charts/RankedBars";
+import { ActionCard, useActionStore } from "../insights/ActionCard";
+import { StateChannelMatrix } from "./PlanOverview";
 import { Sparkline } from "../ui/Sparkline";
-import { Badge, Button, Card, cn, LinkButton, StatusDot } from "../ui/primitives";
-import { assess, findHotspot, getSnapshot, kpiById, monthsUpTo, prevMonth, series } from "@/lib/data/metrics";
-import { stateStory, type StoryPoint } from "@/lib/data/narratives";
-import { fmtCompact, fmtInt, fmtPct, fmtPct0, fmtPp, fmtSignedPct, monthLabel, monthName, monthShort } from "@/lib/format";
+import { Badge, Button, Card, cn, dirTone } from "../ui/primitives";
+import { assess, findFocusChannel, findHotspot, getSnapshot, isChannel, kpiById, prevMonth, scopeName, series } from "@/lib/data/metrics";
+import { buildActions, stateStory, type StoryPoint } from "@/lib/data/narratives";
+import { fmtCompact, fmtInt, fmtPct, fmtPct0, fmtPp, fmtSignedPct, monthLabel, monthName, monthShort, stateSlug } from "@/lib/format";
 
 const KPI_STRIP = ["sales", "installs", "cancels", "cancelRate", "post", "cust", "pending", "onTime"] as const;
 
-function GrowthCard({ model, state, month }: { model: ReturnType<typeof useApp>["model"]; state: string; month: string }) {
-  const def = kpiById("cancels")!;
-  const a = assess(model, def, month, state);
+function GrowthCard({ model, scope, month }: { model: ReturnType<typeof useApp>["model"]; scope: string; month: string }) {
+  const a = assess(model, kpiById("cancels")!, month, scope);
   const pm = prevMonth(model, month);
-  const spark = series(model, "cancels", state).filter((p) => p.month <= month).map((p) => p.value);
+  const spark = series(model, "cancels", scope).filter((p) => p.month <= month).map((p) => p.value);
+  const tone = dirTone("down", a.delta?.value);
   return (
-    <div className={cn("flex min-h-[158px] flex-col justify-between rounded-[18px] border bg-white p-4 shadow-card", a.status === "critical" ? "border-bad/40" : "border-line")}>
-      <div className="flex items-start justify-between"><div className="text-[12px] font-semibold text-mute">Cancel growth vs {pm ? monthName(pm) : "prior"}</div><StatusDot status={a.status} pulse /></div>
+    <div className={cn("flex min-h-[158px] flex-col justify-between rounded-[18px] border bg-card p-4 shadow-card", a.status === "critical" ? "border-bad/40" : "border-line")}>
+      <div className="text-[12px] font-semibold text-mute">Cancellation growth vs {pm ? monthName(pm) : "prior"}</div>
       <div className="flex items-end justify-between gap-2">
-        <div className="num text-[34px] font-semibold leading-none tracking-tight" style={{ color: a.status === "critical" ? C.bad : undefined }}>{fmtSignedPct(a.delta?.value ?? null)}</div>
-        <Sparkline values={spark} color={a.status === "critical" ? C.bad : C.indigo} width={84} height={34} />
+        <div className={cn("num text-[34px] font-semibold leading-none tracking-tight", tone === "bad" ? "text-bad" : tone === "good" ? "text-good" : "")}>{fmtSignedPct(a.delta?.value ?? null)}</div>
+        <Sparkline values={spark} color={tone === "bad" ? C.bad : C.good} width={84} height={34} />
       </div>
-      <div className="border-t border-line-2 pt-2.5 text-[11.5px] text-mute">{fmtInt(a.delta?.previous ?? null)} → {fmtInt(a.delta?.current ?? null)} cancellations{a.anomaly ? " · anomaly" : ""}</div>
+      <div className="border-t border-line-2 pt-2.5 text-[11.5px] text-mute">{fmtInt(a.delta?.previous ?? null)} to {fmtInt(a.delta?.current ?? null)} cancellations{a.anomaly ? " · exception" : ""}</div>
     </div>
   );
 }
 
 function Insight({ point }: { point: StoryPoint }) {
   return (
-    <div className={cn("mt-5 flex gap-3 rounded-2xl border px-4 py-3.5 text-[14px] leading-relaxed", point.tone === "bad" ? "border-bad/25 bg-bad-soft/60" : point.tone === "good" ? "border-good/25 bg-good-soft/60" : "border-line bg-[#f7f7f3]")}>
-      <Lightbulb className={cn("mt-0.5 size-4 shrink-0", point.tone === "bad" ? "text-bad" : "text-mute")} />
+    <div className={cn("mt-5 flex gap-3 rounded-2xl border px-4 py-3.5 text-[14px] leading-relaxed", point.tone === "bad" ? "border-bad/25 bg-bad-soft" : point.tone === "good" ? "border-good/25 bg-good-soft" : "border-line bg-subtle")}>
+      <Lightbulb className={cn("mt-0.5 size-4 shrink-0", point.tone === "bad" ? "text-bad" : point.tone === "good" ? "text-good" : "text-mute")} />
       <p className="text-ink-2">{point.text}</p>
     </div>
   );
@@ -53,82 +55,91 @@ interface StepDef {
   render: () => ReactNode;
 }
 
-export function StateDrilldown({ state }: { state: string }) {
+/** State or channel plan: KPI strip, a progressive six to seven step story, and the recommended actions. */
+export function StateDrilldown({ scope }: { scope: string }) {
   const { model, month, openKpi } = useApp();
+  const channel = isChannel(scope);
+  const name = scopeName(scope);
   const pm = prevMonth(model, month);
-  const cur = getSnapshot(model, month, state);
-  const prev = pm ? getSnapshot(model, pm, state) : null;
+  const cur = getSnapshot(model, month, scope);
+  const prev = pm ? getSnapshot(model, pm, scope) : null;
   const port = getSnapshot(model, month, null);
-  const story = useMemo(() => stateStory(model, month, state), [model, month, state]);
-  const hot = findHotspot(model, month);
-  const isHot = hot?.state === state && (assess(model, kpiById("cancels")!, month, state).delta?.value ?? 0) > 0.15;
-  const cancelMoM = assess(model, kpiById("cancels")!, month, state);
+  const story = useMemo(() => stateStory(model, month, scope), [model, month, scope]);
+  const hot = channel ? findFocusChannel(model, month)?.channel : findHotspot(model, month)?.state;
+  const cancelMoM = assess(model, kpiById("cancels")!, month, scope);
+  const isHot = hot === name && (cancelMoM.delta?.value ?? 0) > 0.15;
   const [unlocked, setUnlocked] = useState(1);
   const [showAll, setShowAll] = useState(false);
   const refs = useRef<(HTMLDivElement | null)[]>([]);
+  const [store, update] = useActionStore();
+  const base = channel ? "channels" : "states";
 
-  // reset the reveal when the state or month changes
   useEffect(() => {
     setUnlocked(1);
     setShowAll(false);
-  }, [state, month]);
+  }, [scope, month]);
 
-  // ---------------- step 1 data: Aug vs Sep clustered bars + indexed trend
   const compare = [
-    { name: "Unique Sales", a: prev?.sales ?? null, b: cur.sales, unit: "n" },
-    { name: "Installs", a: prev?.installs ?? null, b: cur.installs, unit: "n" },
-    { name: "Cancellations", a: prev?.cancels ?? null, b: cur.cancels, unit: "n", hot: true },
-    { name: "Cancel rate", a: prev?.cancelRate ?? null, b: cur.cancelRate, unit: "p" },
+    { name: "Unique Sales", a: prev?.sales ?? null, b: cur.sales, unit: "n", good: "up" as const },
+    { name: "Installs", a: prev?.installs ?? null, b: cur.installs, unit: "n", good: "up" as const },
+    { name: "Cancellations", a: prev?.cancels ?? null, b: cur.cancels, unit: "n", good: "down" as const },
+    { name: "Cancel rate", a: prev?.cancelRate ?? null, b: cur.cancelRate, unit: "p", good: "down" as const },
   ];
   const idx = useMemo(() => {
-    const s = series(model, "sales", state), c = series(model, "cancels", state), i = series(model, "installs", state);
+    const s = series(model, "sales", scope), c = series(model, "cancels", scope), i = series(model, "installs", scope);
     const b = (arr: typeof s) => arr[0]?.value ?? null;
     return model.months.filter((m) => m <= month).map((m, k) => {
       const f = (arr: typeof s) => (arr[k].value !== null && b(arr) ? (arr[k].value! / b(arr)!) * 100 : null);
       return { label: monthShort(m), Sales: f(s), Installs: f(i), Cancellations: f(c) };
     });
-  }, [model, state, month]);
+  }, [model, scope, month]);
 
-  // ---------------- step 2 data: pre/on/post for prev vs cur
   const timing = [
     { label: pm ? monthName(pm) : "Prior", ...pick(prev) },
     { label: monthName(month), ...pick(cur) },
   ].filter((r) => r.pre !== null);
 
+  // State × channel mix for this plan (published for the drill month).
+  const mix = model.stateChannel.filter((r) => (channel ? r.channel === name : r.state === name));
+  const actions = buildActions(model, month).filter((a) => a.market === "All markets" || a.market.includes(name));
+
   const steps: StepDef[] = [
     {
       id: "change",
-      title: `How did ${state} change?`,
+      title: `How did ${name} change?`,
       question: `${pm ? monthName(pm) : "Prior"} vs ${monthName(month)}`,
       render: () => (
         <>
           <div className="grid gap-4 md:grid-cols-4">
-            {compare.map((c) => (
-              <div key={c.name} className="rounded-2xl border border-line bg-white p-4">
-                <div className="flex items-start justify-between">
-                  <div className="eyebrow">{c.name}</div>
-                  {c.a !== null && c.b !== null && (
-                    <span className={cn("num text-xs font-bold", c.hot ? "text-bad" : "text-mute")}>{c.unit === "p" ? fmtPp(c.b - c.a, 1) : fmtSignedPct(c.b / c.a - 1)}</span>
-                  )}
+            {compare.map((c) => {
+              const t = c.a !== null && c.b !== null ? dirTone(c.good, c.b - c.a) : "neutral";
+              return (
+                <div key={c.name} className="rounded-2xl border border-line bg-card p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="eyebrow">{c.name}</div>
+                    {c.a !== null && c.b !== null && (
+                      <span className={cn("num text-xs font-bold", t === "bad" ? "text-bad" : t === "good" ? "text-good" : "text-mute")}>{c.unit === "p" ? fmtPp(c.b - c.a, 1) : fmtSignedPct(c.b / c.a - 1)}</span>
+                    )}
+                  </div>
+                  <div className="num mt-1 text-2xl font-semibold">{c.unit === "p" ? fmtPct(c.b) : fmtCompact(c.b)}</div>
+                  <div className="h-[110px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={[{ n: pm ? monthShort(pm) : "Prior", v: c.a }, { n: monthShort(month), v: c.b }]} margin={{ top: 8, right: 4, left: 4, bottom: 0 }} barCategoryGap="30%">
+                        <XAxis dataKey="n" {...axisProps} />
+                        <YAxis hide domain={[0, "dataMax"]} />
+                        <Tooltip cursor={false} content={({ active, payload }) => active && payload?.length ? <TipCard title={c.name} rows={[{ label: String(payload[0].payload.n), value: c.unit === "p" ? fmtPct(payload[0].payload.v) : fmtInt(payload[0].payload.v) }]} /> : null} />
+                        <Bar dataKey="v" radius={[8, 8, 0, 0]} animationDuration={700}>
+                          <Cell fill={C.slate} />
+                          <Cell fill={t === "bad" ? C.bad : t === "good" ? C.good : C.indigo} />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-                <div className="num mt-1 text-2xl font-semibold">{c.unit === "p" ? fmtPct(c.b) : fmtCompact(c.b)}</div>
-                <div className="h-[110px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={[{ n: pm ? monthShort(pm) : "Prior", v: c.a }, { n: monthShort(month), v: c.b }]} margin={{ top: 8, right: 4, left: 4, bottom: 0 }} barCategoryGap="30%">
-                      <XAxis dataKey="n" {...axisProps} />
-                      <YAxis hide domain={[0, "dataMax"]} />
-                      <Tooltip cursor={false} content={({ active, payload }) => active && payload?.length ? <TipCard title={c.name} rows={[{ label: String(payload[0].payload.n), value: c.unit === "p" ? fmtPct(payload[0].payload.v) : fmtInt(payload[0].payload.v) }]} /> : null} />
-                      <Bar dataKey="v" radius={[8, 8, 0, 0]} animationDuration={700}>
-                        <Cell fill={C.slate} />
-                        <Cell fill={c.hot ? C.bad : C.indigo} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-          <div className="mt-5 rounded-2xl border border-line bg-white p-4">
+          <div className="mt-5 rounded-2xl border border-line bg-card p-4">
             <div className="mb-1 text-[13px] font-semibold">Growth since {monthShort(model.months[0])} (indexed, {monthShort(model.months[0])} = 100)</div>
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -138,9 +149,9 @@ export function StateDrilldown({ state }: { state: string }) {
                   <YAxis {...axisProps} width={40} domain={["dataMin - 5", "dataMax + 5"]} tickFormatter={(v) => String(Math.round(v))} />
                   <Tooltip content={({ active, payload, label }) => active && payload?.length ? <TipCard title={String(label)} rows={payload.map((p) => ({ label: String(p.name), value: Number(p.value).toFixed(0), color: String(p.color) }))} /> : null} />
                   <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
-                  <Line type="monotone" dataKey="Sales" stroke={C.slateDeep} strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="Installs" stroke={C.lilac} strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="Cancellations" stroke={C.bad} strokeWidth={2.75} dot={{ r: 3, fill: "#fff", stroke: C.bad, strokeWidth: 2 }} />
+                  <Line type="monotone" dataKey="Sales" stroke={C.good} strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Installs" stroke={C.brand} strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Cancellations" stroke={C.bad} strokeWidth={2.75} dot={{ r: 3, fill: C.card, stroke: C.bad, strokeWidth: 2 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -156,33 +167,33 @@ export function StateDrilldown({ state }: { state: string }) {
       render: () => (
         <>
           <div className="grid gap-5 lg:grid-cols-[1fr_1.35fr]">
-            <div className="flex flex-col justify-center rounded-2xl bg-ink p-6 text-white">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/50">Post-ODD share · {monthName(month)}</div>
-              <div className="num mt-2 text-[64px] font-semibold leading-none text-brand">{fmtPct0(cur.postPct)}</div>
+            <div className="flex flex-col justify-center rounded-2xl bg-panel p-6 text-white">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/50">Post ODD share · {monthName(month)}</div>
+              <div className="num bs-gradient-text mt-2 text-[64px] font-semibold leading-none">{fmtPct0(cur.postPct)}</div>
               <div className="mt-2 text-sm text-white/70">
                 {fmtInt(cur.postCancels)} of {fmtInt(cur.cancels)} cancellations after the Original Due Date
-                {prev?.postPct != null && <> · was {fmtPct0(prev.postPct)} in {monthShort(pm!)}</>}
+                {prev?.postPct != null && <> · {fmtPct0(prev.postPct)} in {monthShort(pm!)}</>}
               </div>
               <div className="mt-5 grid grid-cols-3 gap-2 text-center">
                 {(["pre", "on", "post"] as const).map((b) => (
                   <div key={b} className="rounded-xl bg-white/[0.08] px-2 py-2.5">
-                    <div className="text-[10.5px] uppercase tracking-wider text-white/50">{b}-ODD</div>
+                    <div className="text-[10.5px] uppercase tracking-wider text-white/50">{b} ODD</div>
                     <div className="num text-lg font-semibold">{fmtPct0(cur[`${b}Pct`])}</div>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="rounded-2xl border border-line bg-white p-4">
+            <div className="rounded-2xl border border-line bg-card p-4">
               <div className="mb-2 text-[13px] font-semibold">Share of cancellations by timing</div>
               <div className="h-[230px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={timing} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 0 }} barSize={38}>
                     <XAxis type="number" hide domain={[0, 1]} />
-                    <YAxis type="category" dataKey="label" {...axisProps} width={78} tick={{ fill: "#3a3a36", fontSize: 12.5, fontWeight: 600 }} />
-                    <Tooltip cursor={false} content={({ active, payload }) => active && payload?.length ? <TipCard title={String(payload[0].payload.label)} rows={[{ label: "Post-ODD", value: fmtPct0(payload[0].payload.post), color: ODD_COLORS.post }, { label: "On-ODD", value: fmtPct0(payload[0].payload.on), color: ODD_COLORS.on }, { label: "Pre-ODD", value: fmtPct0(payload[0].payload.pre), color: ODD_COLORS.pre }]} /> : null} />
-                    <Bar dataKey="pre" stackId="s" fill={ODD_COLORS.pre} name="Pre-ODD" radius={[10, 0, 0, 10]} label={{ position: "center", formatter: (v: unknown) => fmtPct0(Number(v)), fontSize: 11, fill: "#333" }} />
-                    <Bar dataKey="on" stackId="s" fill={ODD_COLORS.on} name="On-ODD" label={{ position: "center", formatter: (v: unknown) => fmtPct0(Number(v)), fontSize: 11, fill: "#333" }} />
-                    <Bar dataKey="post" stackId="s" fill={ODD_COLORS.post} name="Post-ODD" radius={[0, 10, 10, 0]} label={{ position: "center", formatter: (v: unknown) => fmtPct0(Number(v)), fontSize: 12, fontWeight: 700, fill: "#fff" }} />
+                    <YAxis type="category" dataKey="label" {...axisProps} width={78} tick={{ fill: C.ink, fontSize: 12.5, fontWeight: 600 }} />
+                    <Tooltip cursor={false} content={({ active, payload }) => active && payload?.length ? <TipCard title={String(payload[0].payload.label)} rows={[{ label: "Post ODD", value: fmtPct0(payload[0].payload.post), color: ODD_COLORS.post }, { label: "On ODD", value: fmtPct0(payload[0].payload.on), color: ODD_COLORS.on }, { label: "Pre ODD", value: fmtPct0(payload[0].payload.pre), color: ODD_COLORS.pre }]} /> : null} />
+                    <Bar dataKey="pre" stackId="s" fill={ODD_COLORS.pre} name="Pre ODD" radius={[10, 0, 0, 10]} label={{ position: "center", formatter: (v: unknown) => fmtPct0(Number(v)), fontSize: 11, fill: "#222" }} />
+                    <Bar dataKey="on" stackId="s" fill={ODD_COLORS.on} name="On ODD" label={{ position: "center", formatter: (v: unknown) => fmtPct0(Number(v)), fontSize: 11, fill: "#222" }} />
+                    <Bar dataKey="post" stackId="s" fill={ODD_COLORS.post} name="Post ODD" radius={[0, 10, 10, 0]} label={{ position: "center", formatter: (v: unknown) => fmtPct0(Number(v)), fontSize: 12, fontWeight: 700, fill: "#fff" }} />
                     <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -199,21 +210,63 @@ export function StateDrilldown({ state }: { state: string }) {
       question: "Customer · Company · Faux",
       render: () => (
         <>
-          <Card className="p-5 sm:p-6"><CancelClassification model={model} month={month} state={state} /></Card>
+          <Card className="p-5 sm:p-6"><CancelClassification model={model} month={month} state={scope} /></Card>
           <Insight point={story.who} />
         </>
       ),
     },
+    ...(!channel
+      ? [{
+          id: "why",
+          title: "Why are customers cancelling?",
+          question: "Customer Miss reasons",
+          render: () => (
+            <>
+              <Card className="p-5 sm:p-6"><CustomerMissDrivers model={model} month={month} state={scope} /></Card>
+              <Insight point={story.why} />
+            </>
+          ),
+        } as StepDef]
+      : []),
     {
-      id: "why",
-      title: "Why are customers cancelling?",
-      question: "Customer Miss reasons",
-      render: () => (
-        <>
-          <Card className="p-5 sm:p-6"><CustomerMissDrivers model={model} month={month} state={state} /></Card>
-          <Insight point={story.why} />
-        </>
-      ),
+      id: "mix",
+      title: channel ? `Which states drive ${name}?` : `Which channels drive ${name}?`,
+      question: channel ? "State mix" : "Channel mix",
+      render: () => {
+        const top = [...mix].sort((a, b) => (b.cancelGrowth ?? -1) - (a.cancelGrowth ?? -1))[0];
+        return (
+          <>
+            {month !== model.drillMonth || !mix.length ? (
+              <Card className="p-8 text-center text-sm text-mute">The state and channel cross view is published for {model.drillMonth ? monthLabel(model.drillMonth) : "the latest month"} only.</Card>
+            ) : (
+              <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
+                <Card className="p-5 sm:p-6">
+                  <div className="mb-3 text-[13px] font-semibold">Cancellations by {channel ? "state" : "channel"} · {monthLabel(month)}</div>
+                  <RankedBars rows={[...mix].sort((a, b) => (b.cancels ?? 0) - (a.cancels ?? 0)).map((r) => {
+                    const label = channel ? r.state : r.channel;
+                    const t = dirTone("down", r.cancelGrowth);
+                    return {
+                      id: label, label, value: r.cancels, valueLabel: `${fmtInt(r.cancels)} · ${fmtPct(r.cancelRate)}`,
+                      sub: `Post ODD ${fmtPct0(r.postPct)} · Pending ${fmtPct0(r.pendingPct)}`,
+                      chip: r.cancelGrowth !== null ? { text: fmtSignedPct(r.cancelGrowth), tone: t } : undefined,
+                      color: r === top && (r.cancelGrowth ?? 0) > 0.15 ? C.bad : C.indigo, emphasis: r === top && (r.cancelGrowth ?? 0) > 0.15,
+                    };
+                  })} />
+                </Card>
+                <StateChannelMatrix highlight={name} />
+              </div>
+            )}
+            {top && month === model.drillMonth && (
+              <Insight point={{
+                tone: (top.cancelGrowth ?? 0) > 0.15 ? "bad" : "neutral",
+                text: (top.cancelGrowth ?? 0) > 0.15
+                  ? `${channel ? top.state : top.channel} is the priority within ${name}: cancellations ${fmtSignedPct(top.cancelGrowth)} at a ${fmtPct(top.cancelRate)} cancel rate, with ${fmtPct0(top.pendingPct)} Pending Customer Contact.`
+                  : `No ${channel ? "state" : "channel"} within ${name} stands out; movement is broadly consistent.`,
+              }} />
+            )}
+          </>
+        );
+      },
     },
     {
       id: "seen",
@@ -223,18 +276,18 @@ export function StateDrilldown({ state }: { state: string }) {
         <>
           <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
             <Card className="p-5 sm:p-6">
-              <div className="mb-3 text-[13px] font-semibold">Watchtower state of {state}’s cancellations</div>
-              <WatchtowerSignals model={model} month={month} state={state} />
+              <div className="mb-3 text-[13px] font-semibold">Watchtower state of {name} cancellations</div>
+              <WatchtowerSignals model={model} month={month} state={scope} />
             </Card>
             <Card className="flex flex-col justify-center p-6">
               <div className="eyebrow mb-2">Pending Customer Contact</div>
               <div className="flex items-end gap-3">
                 <span className="num text-[52px] font-semibold leading-none">{fmtPct0(cur.pendingPct)}</span>
-                {prev?.pendingPct != null && cur.pendingPct !== null && <span className="num pb-1.5 text-base font-bold text-bad">{fmtPp(cur.pendingPct - prev.pendingPct)}</span>}
+                {prev?.pendingPct != null && cur.pendingPct !== null && <span className={cn("num pb-1.5 text-base font-bold", cur.pendingPct > prev.pendingPct ? "text-bad" : "text-good")}>{fmtPp(cur.pendingPct - prev.pendingPct)}</span>}
               </div>
               <div className="mt-2 text-sm text-mute">Portfolio: {fmtPct0(port.pendingPct)} · BSW Delay Predicted {fmtPct0(cur.bswPct)} · Install in Jeopardy {fmtPct0(cur.jeopardyPct)}</div>
               <div className="mt-4 h-px bg-line" />
-              <p className="mt-4 text-[13px] leading-relaxed text-mute">A major early-warning signal: unresolved customer contact is visible <strong className="text-ink">before</strong> the customer cancels.</p>
+              <p className="mt-4 text-[13px] leading-relaxed text-mute">A principal early warning signal: unresolved customer contact is visible <strong className="text-ink">before</strong> the customer cancels.</p>
             </Card>
           </div>
           <Insight point={story.seen} />
@@ -244,28 +297,18 @@ export function StateDrilldown({ state }: { state: string }) {
     {
       id: "do",
       title: "What should we do?",
-      question: "Recommended action",
+      question: "Recommended actions",
       render: () => (
-        <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-          <Card className="p-6">
-            <Badge tone="brand" className="mb-3">RECOMMENDED ACTION</Badge>
-            <h4 className="text-[22px] font-semibold leading-tight tracking-tight">Post-ODD Customer Rescue Workflow</h4>
-            <p className="mt-3 text-[14.5px] leading-relaxed text-ink-2">
-              {story.verdict === "customer-readiness"
-                ? `${state}’s cancellations are a customer engagement and appointment-readiness problem, not a network one. Intervene at the first missed or rescheduled ODD — before the customer becomes unreachable.`
-                : `Use the workflow below as the first response to late-stage cancellations in ${state}, and monitor whether operational signals need separate attention.`}
-            </p>
-            <dl className="mt-5 grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-xl bg-[#f7f7f3] p-3"><dt className="eyebrow">Population</dt><dd className="num mt-1 text-xl font-semibold">{fmtInt(cur.postCancels)}</dd><dd className="text-xs text-mute">Post-ODD cancels</dd></div>
-              <div className="rounded-xl bg-[#f7f7f3] p-3"><dt className="eyebrow">Addressable core</dt><dd className="num mt-1 text-xl font-semibold">{fmtInt(["noaccessnothome", "customerrequestedreschedule", "cancelledwhiletechonjob"].reduce((a, k) => a + (cur[`reason:${k}`] ?? 0), 0))}</dd><dd className="text-xs text-mute">No-access, reschedule, tech-on-job</dd></div>
-            </dl>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <LinkButton href={`/actions?month=${month}#rescue`} variant="primary" size="lg">View Rescue Opportunities</LinkButton>
-              <LinkButton href={`/watchtower?month=${month}&state=${encodeURIComponent(state.toLowerCase().replace(/\s+/g, "-"))}`} size="lg">Warning-signal story</LinkButton>
-            </div>
-          </Card>
-          <Card className="bg-[#fbfaf5] p-6"><RescueFlow compact /></Card>
-        </div>
+        <>
+          <div className="grid gap-5 xl:grid-cols-2">
+            {actions.slice(0, 4).map((a, i) => (
+              <ActionCard key={a.id} action={a} month={month} index={i} record={store[a.id]} onUpdate={(p) => update(a.id, p)} />
+            ))}
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Link href={`/actions?month=${month}`} className="inline-flex items-center gap-1.5 text-[13px] font-semibold underline decoration-dotted underline-offset-4">All actions <ArrowRight className="size-3.5" /></Link>
+          </div>
+        </>
       ),
     },
   ];
@@ -275,49 +318,54 @@ export function StateDrilldown({ state }: { state: string }) {
     setUnlocked((u) => Math.max(u, n));
     setTimeout(() => refs.current[n - 1]?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
   };
+  const t = dirTone("down", cancelMoM.delta?.value);
 
   return (
     <div className="space-y-8">
       <div>
-        <Link href={`/states?month=${month}`} className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-mute transition hover:text-ink"><ArrowLeft className="size-3.5" /> All states</Link>
+        <Link href={`/${base}?month=${month}`} className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-mute transition hover:text-ink"><ArrowLeft className="size-3.5" /> {channel ? "Channel Wise Plan" : "State Wise Plan"}</Link>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
+            <div className="eyebrow mb-1">{channel ? "Channel plan" : "State plan"}</div>
             <div className="flex items-center gap-3">
-              <h2 className="text-[38px] font-semibold uppercase leading-none tracking-tight">{state}</h2>
-              {isHot && <Badge tone="bad" className="animate-pulse-ring">HOTSPOT</Badge>}
+              <h2 className="text-[38px] font-semibold uppercase leading-none tracking-tight">{name}</h2>
+              {isHot && <Badge tone="bad" className="animate-pulse-ring">FOCUS</Badge>}
             </div>
             <div className="mt-2 text-[15px] text-mute">{monthLabel(month)}</div>
           </div>
-          <div className="flex items-center gap-2 text-[13px] text-mute">
-            <StatusDot status={cancelMoM.status} pulse /> Cancellations {fmtSignedPct(cancelMoM.delta?.value ?? null)} vs {pm ? monthShort(pm) : "prior"}
+          <div className="flex flex-wrap items-center gap-2">
+            {(channel ? model.channelNames : model.states).map((n) => (
+              <Link key={n} href={`/${base}/${stateSlug(n)}?month=${month}`} className={cn("rounded-full border px-3 py-1 text-[12px] font-semibold transition", n === name ? "border-panel bg-panel text-white" : "border-line bg-card text-mute hover:border-ink hover:text-ink")}>{n}</Link>
+            ))}
           </div>
+        </div>
+        <div className={cn("mt-3 text-[13px] font-semibold", t === "bad" ? "text-bad" : t === "good" ? "text-good" : "text-mute")}>
+          Cancellations {fmtSignedPct(cancelMoM.delta?.value ?? null)} vs {pm ? monthName(pm) : "prior month"}
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3">
         {KPI_STRIP.slice(0, 5).map((id, i) => (
-          <KPICard key={id} def={kpiById(id)!} model={model} month={month} state={state} onClick={() => openKpi(id, "trend", state)} delay={i * 40} />
+          <KPICard key={id} def={kpiById(id)!} model={model} month={month} state={scope} onClick={() => openKpi(id, "trend", scope)} delay={i * 40} />
         ))}
-        <GrowthCard model={model} state={state} month={month} />
+        <GrowthCard model={model} scope={scope} month={month} />
         {KPI_STRIP.slice(5).map((id, i) => (
-          <KPICard key={id} def={kpiById(id)!} model={model} month={month} state={state} onClick={() => openKpi(id, "trend", state)} delay={(i + 6) * 40} />
+          <KPICard key={id} def={kpiById(id)!} model={model} month={month} state={scope} onClick={() => openKpi(id, "trend", scope)} delay={(i + 6) * 40} />
         ))}
       </div>
-      <p className="-mt-4 text-xs text-mute">Pending Customer Contact and On-Time Install are only provided by the workbook for its drill month. Click any card for its deep dive.</p>
 
-      {/* progressive story */}
       <div>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-1.5">
             {steps.map((s, i) => (
               <button key={s.id} disabled={i + 1 > visible} onClick={() => refs.current[i]?.scrollIntoView({ behavior: "smooth", block: "start" })} title={s.title}
-                className={cn("grid size-8 place-items-center rounded-full border text-xs font-bold transition", i + 1 <= visible ? "border-ink bg-ink text-white" : "border-line bg-white text-soft")}>
+                className={cn("grid size-8 place-items-center rounded-full border text-xs font-bold transition", i + 1 <= visible ? "border-panel bg-panel text-white" : "border-line bg-card text-soft")}>
                 {i + 1 < visible || showAll ? <Check className="size-3.5" /> : i + 1}
               </button>
             ))}
           </div>
           {!showAll && unlocked < steps.length && (
-            <button onClick={() => setShowAll(true)} className="flex items-center gap-1.5 text-xs font-semibold text-mute hover:text-ink"><Eye className="size-3.5" /> Reveal the full story</button>
+            <button onClick={() => setShowAll(true)} className="flex items-center gap-1.5 text-xs font-semibold text-mute hover:text-ink"><Eye className="size-3.5" /> Reveal the full plan</button>
           )}
         </div>
 
@@ -325,7 +373,7 @@ export function StateDrilldown({ state }: { state: string }) {
           {steps.slice(0, visible).map((s, i) => (
             <div key={s.id} ref={(el) => { refs.current[i] = el; }} className="animate-rise scroll-mt-24">
               <div className="mb-4 flex items-center gap-3">
-                <span className="grid size-8 place-items-center rounded-full bg-brand text-sm font-bold text-ink">{i + 1}</span>
+                <span className="bs-gradient grid size-8 place-items-center rounded-full text-sm font-bold text-[#111]">{i + 1}</span>
                 <div>
                   <h3 className="text-[22px] font-semibold tracking-tight">{s.title}</h3>
                   <div className="eyebrow">{s.question}</div>

@@ -23,11 +23,11 @@ export function KPIGrid() {
       <SectionTitle
         eyebrow="Key performance indicators"
         title="Where does it hurt?"
-        sub="Every card is clickable — open one to trace it through states, timing, classification and drivers."
+        sub="Every card is interactive: open one to trace it through states, channels, timing, classification and drivers."
         right={
           <div className="flex items-center gap-2.5">
             {state && (
-              <button onClick={() => setState(null)} className="flex h-10 items-center gap-1.5 rounded-full bg-ink px-3.5 text-[12.5px] font-semibold text-white" title="Clear state filter">
+              <button onClick={() => setState(null)} className="flex h-10 items-center gap-1.5 rounded-full bg-panel px-3.5 text-[12.5px] font-semibold text-white" title="Clear state filter">
                 <MapPin className="size-3.5 text-brand" /> {state} ✕
               </button>
             )}
@@ -36,7 +36,7 @@ export function KPIGrid() {
               <select
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}
-                className="h-10 cursor-pointer appearance-none rounded-full border border-line bg-white pl-4 pr-9 text-[13px] font-semibold shadow-card outline-none hover:border-ink focus:border-ink"
+                className="h-10 cursor-pointer appearance-none rounded-full border border-line bg-card pl-4 pr-9 text-[13px] font-semibold shadow-card outline-none hover:border-ink focus:border-ink"
               >
                 {[...model.months].reverse().map((m) => (
                   <option key={m} value={m}>{monthLabel(m)}</option>
@@ -54,7 +54,7 @@ export function KPIGrid() {
           return (
             <div key={g.id}>
               <div className="mb-3 flex items-center gap-3">
-                <span className="grid size-6 place-items-center rounded-full bg-ink text-[11px] font-bold text-brand">{gi + 1}</span>
+                <span className="grid size-6 place-items-center rounded-full bg-panel text-[11px] font-bold text-brand">{gi + 1}</span>
                 <h3 className="text-[15px] font-semibold tracking-tight">{g.label}</h3>
                 <Badge className="hidden sm:inline-flex">{g.question}</Badge>
               </div>

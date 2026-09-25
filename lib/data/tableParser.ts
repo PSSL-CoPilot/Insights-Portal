@@ -179,7 +179,7 @@ export function parseTable(grid: unknown[][], spec: TableSpec, opts: ParseOption
   // Warn about optional columns that are absent
   for (const [k, f] of Object.entries(spec)) {
     if (!(k in colMap) && f.required === false) {
-      issues.push({ level: "info", sheet: opts.sheet, message: `Optional column "${f.headers[0]}" not found — related values will show as unavailable.` });
+      issues.push({ level: "info", sheet: opts.sheet, message: `Optional column "${f.headers[0]}" not found; related values will show as unavailable.` });
     }
   }
 

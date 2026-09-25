@@ -52,6 +52,11 @@ export interface StateMonthlyRow {
   coPct: number | null;
   faux: number | null;
   fauxPct: number | null;
+  pendingPct: number | null;
+  actionPct: number | null;
+  jeopardyPct: number | null;
+  bswPct: number | null;
+  onTimePct: number | null;
 }
 
 /** "September State Drill" — one row per state for the drill month. */
@@ -157,13 +162,45 @@ export interface DictionaryRow {
   note: string;
 }
 
-/** Optional future sheet "Channel Monthly": Month | Channel | Unique Sales | Installs | Cancellations */
+/** "Channel Monthly": one row per channel and month. */
 export interface ChannelMonthlyRow {
   month: MonthKey;
   channel: string;
   sales: number | null;
   installs: number | null;
   cancels: number | null;
+  cancelRate: number | null;
+  preCancels: number | null;
+  prePct: number | null;
+  onCancels: number | null;
+  onPct: number | null;
+  postCancels: number | null;
+  postPct: number | null;
+  custMiss: number | null;
+  custPct: number | null;
+  coMiss: number | null;
+  coPct: number | null;
+  faux: number | null;
+  fauxPct: number | null;
+  pendingPct: number | null;
+  actionPct: number | null;
+  jeopardyPct: number | null;
+  bswPct: number | null;
+  onTimePct: number | null;
+}
+
+/** "September State x Channel": one row per state and channel for the drill month. */
+export interface StateChannelRow {
+  state: string;
+  channel: string;
+  sales: number | null;
+  installs: number | null;
+  cancels: number | null;
+  cancelRate: number | null;
+  cancelGrowth: number | null;
+  postPct: number | null;
+  custPct: number | null;
+  pendingPct: number | null;
 }
 
 export type IssueLevel = "error" | "warn" | "info";
@@ -213,4 +250,6 @@ export interface DataModel {
   dictionary: DictionaryRow[];
   /** null = optional "Channel Monthly" sheet not present in the workbook. */
   channels: ChannelMonthlyRow[] | null;
+  channelNames: string[];
+  stateChannel: StateChannelRow[];
 }

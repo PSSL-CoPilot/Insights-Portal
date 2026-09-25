@@ -7,7 +7,7 @@ import type { DataModel, MonthKey } from "@/lib/data/types";
 import { getSnapshot, prevMonth } from "@/lib/data/metrics";
 import { cn } from "../ui/primitives";
 
-export const CLASS_COLORS = { cust: C.indigo, co: C.lilac, faux: C.slate } as const;
+export const CLASS_COLORS = { cust: C.orange, co: C.slateDeep, faux: C.brand } as const;
 
 /** Customer Miss / Company Miss / Faux donut with a supporting table (share, volume, MoM shift). */
 export function CancelClassification({ model, month, state, compact }: { model: DataModel; month: MonthKey; state: string | null; compact?: boolean }) {
@@ -15,8 +15,8 @@ export function CancelClassification({ model, month, state, compact }: { model: 
   const pm = prevMonth(model, month);
   const p = pm ? getSnapshot(model, pm, state) : null;
   const rows = [
-    { id: "cust", name: "Customer Miss", pct: s.custPct, n: s.custMiss, prev: p?.custPct ?? null, color: CLASS_COLORS.cust, blurb: "Customer-side" },
-    { id: "co", name: "Company Miss", pct: s.coPct, n: s.coMiss, prev: p?.coPct ?? null, color: CLASS_COLORS.co, blurb: "Brightspeed / operational" },
+    { id: "cust", name: "Customer Miss", pct: s.custPct, n: s.custMiss, prev: p?.custPct ?? null, color: CLASS_COLORS.cust, blurb: "Customer side" },
+    { id: "co", name: "Company Miss", pct: s.coPct, n: s.coMiss, prev: p?.coPct ?? null, color: CLASS_COLORS.co, blurb: "Brightspeed operational" },
     { id: "faux", name: "Faux Cancel", pct: s.fauxPct, n: s.faux, prev: p?.fauxPct ?? null, color: CLASS_COLORS.faux, blurb: "No true revenue loss" },
   ];
   const dominant = [...rows].sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))[0];

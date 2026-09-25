@@ -7,8 +7,11 @@ import { AppShell } from "@/components/layout/AppShell";
 
 export const metadata: Metadata = {
   title: "Brightspeed Cancellation Intelligence",
-  description: "From “something is wrong” to “here is what to do” — an executive command center for cancellations.",
+  description: "From “something is wrong” to “here is what to do”: an executive command center for cancellations.",
 };
+
+// Applies the saved (or system) theme before first paint so dark mode never flashes light.
+const THEME_SCRIPT = `try{var t=localStorage.getItem("bs.theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch(e){}`;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const model = loadDataModel();
@@ -18,11 +21,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <html lang="en">
         <body>
           <div className="mx-auto max-w-2xl p-10">
-            <div className="rounded-[18px] border border-bad/30 bg-white p-8 shadow-card">
+            <div className="rounded-[18px] border border-bad/30 bg-card p-8 shadow-card">
               <div className="eyebrow mb-2 !text-bad">Data source error</div>
               <h1 className="text-2xl font-semibold">The workbook could not be loaded</h1>
               <p className="mt-2 text-sm text-mute">
-                Expected: <code className="rounded bg-[#f0f0eb] px-1.5 py-0.5">{workbookPath()}</code>
+                Expected: <code className="rounded bg-line-2 px-1.5 py-0.5">{workbookPath()}</code>
               </p>
               <ul className="mt-5 space-y-2 text-sm">
                 {model.issues.map((i, k) => (
@@ -32,7 +35,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 ))}
               </ul>
               <p className="mt-5 text-sm text-mute">
-                Place <strong>Brightspeed_Scenario2_App_Data_Jan_Sep_2026.xlsx</strong> in the <code>/data</code> folder (or set <code>BRIGHTSPEED_DATA_FILE</code>) and refresh.
+                Place <strong>Brightspeed_Cancellation_Data_Jan_Sep_2026.xlsx</strong> in the <code>/data</code> folder (or set <code>BRIGHTSPEED_DATA_FILE</code>) and refresh.
               </p>
             </div>
           </div>
@@ -42,7 +45,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>
         <AppProviders model={model}>
           <AppShell>{children}</AppShell>

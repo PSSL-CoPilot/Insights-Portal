@@ -15,8 +15,8 @@ export const GROUPS: { id: GroupId; label: string; question: string }[] = [
   { id: "health", label: "Business health", question: "What changed?" },
   { id: "timing", label: "Cancellation timing", question: "When are customers leaving?" },
   { id: "responsibility", label: "Responsibility", question: "Who owns the miss?" },
-  { id: "drivers", label: "Customer-miss drivers", question: "Why are customers cancelling?" },
-  { id: "watch", label: "Watchtower · leading indicators", question: "Could we see it coming?" },
+  { id: "drivers", label: "Customer Miss drivers", question: "Why are customers cancelling?" },
+  { id: "watch", label: "Watchtower leading indicators", question: "Could we see it coming?" },
 ];
 
 export type KpiUnit = "count" | "pct";
@@ -57,16 +57,16 @@ export const KPI_DEFS: KpiDef[] = [
   { id: "installs", label: "Installs", group: "health", unit: "count", key: "installs", good: "up", cardLabel: "Installs", blurb: "Orders completed as installed service." },
   { id: "cancels", label: "Total Cancellations", group: "health", unit: "count", key: "cancels", good: "down", cardLabel: "Total Cancellations", blurb: "Orders cancelled in the period." },
   { id: "cancelRate", label: "Cancel Rate", group: "health", unit: "pct", key: "cancelRate", good: "down", cardLabel: "Cancel Rate", blurb: "Cancellations ÷ Unique Sales." },
-  { id: "onTime", label: "On-Time Install %", group: "health", unit: "pct", key: "onTimePct", good: "up", cardLabel: "On-Time Install %", blurb: "Share of installs completed on the committed date." },
+  { id: "onTime", label: "On Time Install %", group: "health", unit: "pct", key: "onTimePct", good: "up", cardLabel: "On Time Install %", blurb: "Share of installs completed on the committed date." },
 
-  { id: "pre", label: "Pre-ODD Cancels %", group: "timing", unit: "pct", key: "prePct", good: "neutral", companion: { key: "preCancels", label: "Pre-ODD cancels" }, cardLabel: "Pre-ODD Cancels %", blurb: "Cancelled before the Original Due Date." },
-  { id: "on", label: "On-ODD Cancels %", group: "timing", unit: "pct", key: "onPct", good: "neutral", companion: { key: "onCancels", label: "On-ODD cancels" }, cardLabel: "On-ODD Cancels %", blurb: "Cancelled on the Original Due Date." },
-  { id: "post", label: "Post-ODD Cancels %", group: "timing", unit: "pct", key: "postPct", good: "down", companion: { key: "postCancels", label: "Post-ODD cancels" }, cardLabel: "Post-ODD Cancels %", blurb: "Cancelled after the Original Due Date — late-stage failure." },
+  { id: "pre", label: "Pre ODD Cancels %", group: "timing", unit: "pct", key: "prePct", good: "neutral", companion: { key: "preCancels", label: "Pre ODD cancels" }, cardLabel: "Pre ODD Cancels %", blurb: "Cancelled before the Original Due Date." },
+  { id: "on", label: "On ODD Cancels %", group: "timing", unit: "pct", key: "onPct", good: "neutral", companion: { key: "onCancels", label: "On ODD cancels" }, cardLabel: "On ODD Cancels %", blurb: "Cancelled on the Original Due Date." },
+  { id: "post", label: "Post ODD Cancels %", group: "timing", unit: "pct", key: "postPct", good: "down", companion: { key: "postCancels", label: "Post ODD cancels" }, cardLabel: "Post ODD Cancels %", blurb: "Cancelled after the Original Due Date: a late stage failure." },
 
   { id: "cust", label: "Customer Miss %", group: "responsibility", unit: "pct", key: "custPct", good: "down", companion: { key: "custMiss", label: "Customer Miss cancels" }, cardLabel: "Customer Miss %", blurb: "Customer-side cancellation classification." },
-  { id: "co", label: "Company Miss %", group: "responsibility", unit: "pct", key: "coPct", good: "down", companion: { key: "coMiss", label: "Company Miss cancels" }, cardLabel: "Company Miss %", blurb: "Brightspeed / operational miss classification." },
+  { id: "co", label: "Company Miss %", group: "responsibility", unit: "pct", key: "coPct", good: "down", companion: { key: "coMiss", label: "Company Miss cancels" }, cardLabel: "Company Miss %", blurb: "Brightspeed operational miss classification." },
   { id: "faux", label: "Faux Cancel %", group: "responsibility", unit: "pct", key: "fauxPct", good: "neutral", companion: { key: "faux", label: "Faux cancels" }, cardLabel: "Faux Cancel %", blurb: "Cancellation with no true revenue loss." },
-  { id: "true", label: "True Cancels", group: "responsibility", unit: "count", key: "trueCancels", good: "down", cardLabel: "True Cancels", blurb: "Customer Miss + Company Miss." },
+  { id: "true", label: "True Cancels", group: "responsibility", unit: "count", key: "trueCancels", good: "down", cardLabel: "True Cancels", blurb: "Customer Miss plus Company Miss." },
 
   { id: "r-buyers", label: REASON_LABELS.buyers, group: "drivers", unit: "count", key: reasonKey(REASON_LABELS.buyers), good: "down", cardLabel: REASON_LABELS.buyers, blurb: "Customer changed their mind after ordering." },
   { id: "r-cancel", label: REASON_LABELS.cancel, group: "drivers", unit: "count", key: reasonKey(REASON_LABELS.cancel), good: "down", cardLabel: REASON_LABELS.cancel, blurb: "Customer explicitly asked to cancel." },
@@ -74,13 +74,20 @@ export const KPI_DEFS: KpiDef[] = [
   { id: "r-resched", label: REASON_LABELS.resched, group: "drivers", unit: "count", key: reasonKey(REASON_LABELS.resched), good: "down", cardLabel: REASON_LABELS.resched, blurb: "Customer asked to reschedule, then cancelled." },
   { id: "r-tech", label: REASON_LABELS.tech, group: "drivers", unit: "count", key: reasonKey(REASON_LABELS.tech), good: "down", cardLabel: REASON_LABELS.tech, blurb: "Customer cancelled while the technician was on site." },
 
-  { id: "pending", label: "Pending Customer Contact %", group: "watch", unit: "pct", key: "pendingPct", good: "down", cardLabel: "Pending Customer Contact %", blurb: "Share of cancels that carried an unresolved customer-contact state." },
+  { id: "pending", label: "Pending Customer Contact %", group: "watch", unit: "pct", key: "pendingPct", good: "down", cardLabel: "Pending Customer Contact %", blurb: "Share of cancellations that carried an unresolved customer contact state." },
   { id: "action", label: "Action Needed Not Jeopardy %", group: "watch", unit: "pct", key: "actionPct", good: "down", cardLabel: "Action Needed Not Jeopardy %", blurb: "Action required even without technical jeopardy." },
-  { id: "jeopardy", label: "Install in Jeopardy %", group: "watch", unit: "pct", key: "jeopardyPct", good: "down", cardLabel: "Install in Jeopardy %", blurb: "Watchtower installation-risk state." },
-  { id: "bsw", label: "BSW Delay Predicted %", group: "watch", unit: "pct", key: "bswPct", good: "down", cardLabel: "BSW Delay Predicted %", blurb: "Existing predictive BSW-delay signal." },
+  { id: "jeopardy", label: "Install in Jeopardy %", group: "watch", unit: "pct", key: "jeopardyPct", good: "down", cardLabel: "Install in Jeopardy %", blurb: "Watchtower installation risk state." },
+  { id: "bsw", label: "BSW Delay Predicted %", group: "watch", unit: "pct", key: "bswPct", good: "down", cardLabel: "BSW Delay Predicted %", blurb: "Existing predictive BSW delay signal." },
 ];
 
 export const kpiById = (id: string) => KPI_DEFS.find((k) => k.id === id);
+
+// ------------------------------------------------------------------ scopes
+/** A scope is `null` (portfolio), a state name, or a channel encoded as `ch:<name>`. */
+export const CH = "ch:";
+export const isChannel = (scope: string | null | undefined): scope is string => !!scope && scope.startsWith(CH);
+export const chScope = (channel: string) => `${CH}${channel}`;
+export const scopeName = (scope: string | null | undefined, fallback = "Portfolio") => (!scope ? fallback : isChannel(scope) ? scope.slice(CH.length) : scope);
 
 // ------------------------------------------------------------------ month helpers
 export const prevMonth = (m: DataModel, month: MonthKey): MonthKey | null => {
@@ -131,20 +138,34 @@ export function getSnapshot(model: DataModel, month: MonthKey, state: string | n
     // installs-to-sales style derivations
     const w = [s.pendingPct, s.actionPct, s.jeopardyPct, s.bswPct];
     s.noActionPct = w.every((x) => x !== null) ? Math.max(0, 1 - (w as number[]).reduce((a, b) => a + b, 0)) : null;
+  } else if (isChannel(state)) {
+    const ch = model.channels?.find((r) => r.month === month && r.channel === scopeName(state));
+    Object.assign(s, {
+      sales: ch?.sales ?? null, installs: ch?.installs ?? null, cancels: ch?.cancels ?? null, cancelRate: ch?.cancelRate ?? null, onTimePct: ch?.onTimePct ?? null,
+      prePct: ch?.prePct ?? null, onPct: ch?.onPct ?? null, postPct: ch?.postPct ?? null,
+      preCancels: ch?.preCancels ?? null, onCancels: ch?.onCancels ?? null, postCancels: ch?.postCancels ?? null,
+      custPct: ch?.custPct ?? null, coPct: ch?.coPct ?? null, fauxPct: ch?.fauxPct ?? null,
+      custMiss: ch?.custMiss ?? null, coMiss: ch?.coMiss ?? null, faux: ch?.faux ?? null,
+      pendingPct: ch?.pendingPct ?? null, jeopardyPct: ch?.jeopardyPct ?? null, bswPct: ch?.bswPct ?? null, actionPct: ch?.actionPct ?? null,
+    });
   } else {
     const sm = model.stateMonthly.find((r) => r.month === month && r.state === state);
     const dr = month === model.drillMonth ? model.stateDrill.find((r) => r.state === state) : undefined;
     const wt = month === model.watchMonth ? model.watchtower.find((r) => !r.isPortfolio && r.state === state) : undefined;
     Object.assign(s, {
       sales: sm?.sales ?? dr?.sales ?? null, installs: sm?.installs ?? dr?.installs ?? null, cancels: sm?.cancels ?? dr?.cancels ?? null,
-      cancelRate: sm?.cancelRate ?? dr?.cancelRate ?? null, onTimePct: dr?.onTimePct ?? null,
+      cancelRate: sm?.cancelRate ?? dr?.cancelRate ?? null, onTimePct: sm?.onTimePct ?? dr?.onTimePct ?? null,
       prePct: sm?.prePct ?? dr?.prePct ?? null, onPct: sm?.onPct ?? dr?.onPct ?? null, postPct: sm?.postPct ?? dr?.postPct ?? null,
       preCancels: sm?.preCancels ?? null, onCancels: sm?.onCancels ?? null, postCancels: sm?.postCancels ?? null,
       custPct: sm?.custPct ?? dr?.custPct ?? null, coPct: sm?.coPct ?? null, fauxPct: sm?.fauxPct ?? null,
       custMiss: sm?.custMiss ?? null, coMiss: sm?.coMiss ?? null, faux: sm?.faux ?? null,
-      pendingPct: dr?.pendingPct ?? wt?.pendingPct ?? null,
-      actionPct: wt?.actionPct ?? null, jeopardyPct: wt?.jeopardyPct ?? null, bswPct: wt?.bswPct ?? null, noActionPct: wt?.noActionPct ?? null,
+      pendingPct: sm?.pendingPct ?? dr?.pendingPct ?? wt?.pendingPct ?? null,
+      actionPct: sm?.actionPct ?? wt?.actionPct ?? null, jeopardyPct: sm?.jeopardyPct ?? wt?.jeopardyPct ?? null, bswPct: sm?.bswPct ?? wt?.bswPct ?? null,
+      noActionPct: wt?.noActionPct ?? null,
     });
+  }
+  if (s.noActionPct == null && [s.pendingPct, s.actionPct, s.jeopardyPct, s.bswPct].every((x) => x != null)) {
+    s.noActionPct = Math.max(0, 1 - (s.pendingPct! + s.actionPct! + s.jeopardyPct! + s.bswPct!));
   }
   // The Dashboard KPI hotspot block carries the prior-month Pending Customer Contact % for its state.
   if (state && state === model.hotspotState && s.pendingPct === null && model.drillMonth && month === prevMonth(model, model.drillMonth)) {
@@ -282,6 +303,32 @@ export function stateRows(model: DataModel, month: MonthKey): StateRow[] {
   return rows;
 }
 
+export interface ChannelRow extends Omit<StateRow, "state"> {
+  channel: string;
+}
+
+export function channelRows(model: DataModel, month: MonthKey): ChannelRow[] {
+  const pm = prevMonth(model, month);
+  const rows = model.channelNames.map((channel) => {
+    const s = getSnapshot(model, month, chScope(channel));
+    const p = pm ? getSnapshot(model, pm, chScope(channel)) : null;
+    return {
+      channel, sales: s.sales, installs: s.installs, cancels: s.cancels, cancelRate: s.cancelRate,
+      cancelsMoM: p?.cancels && s.cancels !== null ? s.cancels / p.cancels - 1 : null, prevCancels: p?.cancels ?? null, contribution: null as number | null,
+      postPct: s.postPct, custPct: s.custPct, pendingPct: s.pendingPct, onTimePct: s.onTimePct, snapshot: s,
+    };
+  });
+  const totalInc = rows.reduce((a, r) => a + ((r.cancels ?? 0) - (r.prevCancels ?? 0)), 0);
+  if (totalInc > 0) rows.forEach((r) => (r.contribution = r.prevCancels !== null && r.cancels !== null ? (r.cancels - r.prevCancels) / totalInc : null));
+  return rows;
+}
+
+/** The channel contributing most to the cancellation increase. */
+export function findFocusChannel(model: DataModel, month: MonthKey): ChannelRow | null {
+  const rows = channelRows(model, month);
+  return rows.length ? [...rows].sort((a, b) => (b.contribution ?? -Infinity) - (a.contribution ?? -Infinity) || (b.cancelsMoM ?? 0) - (a.cancelsMoM ?? 0))[0] : null;
+}
+
 /** The state with the sharpest cancellation growth (falls back to volume when growth is unavailable). */
 export function findHotspot(model: DataModel, month: MonthKey): StateRow | null {
   const rows = stateRows(model, month);
@@ -381,11 +428,12 @@ export function kpiMeaning(model: DataModel, def: KpiDef, month: MonthKey, state
 
 // ------------------------------------------------------------------ trend narrative
 export function describeTrend(model: DataModel, def: KpiDef, month: MonthKey, state: string | null): string {
-  const scope = state ?? "Portfolio";
+  const scope = scopeName(state);
   const pts = series(model, def.key, state).filter((p) => p.value !== null && p.month <= month);
   const a = assess(model, def, month, state);
   const name = def.label.replace(/ %$/, "");
-  if (pts.length < 3 || !a.delta) return `${scope}: only ${pts.length} month(s) of ${name} are available in the workbook, so a trend cannot be described yet.`;
+  const band = (a: number, b: number) => `${fmt(a)} to ${fmt(b)}`;
+  if (pts.length < 3 || !a.delta) return `${scope}: only ${pts.length} month(s) of ${name} are available, so a trend cannot yet be described.`;
   const prior = pts.slice(0, -1).map((p) => p.value as number);
   const lo = Math.min(...prior), hi = Math.max(...prior);
   const fmt = (v: number) => (def.unit === "pct" ? `${(v * 100).toFixed(1)}%` : Math.round(v).toLocaleString("en-US"));
@@ -394,7 +442,7 @@ export function describeTrend(model: DataModel, def: KpiDef, month: MonthKey, st
   const chg = def.unit === "pct" ? `${a.delta.value >= 0 ? "+" : "−"}${Math.abs(a.delta.value * 100).toFixed(0)} pp` : `${a.delta.value >= 0 ? "+" : "−"}${Math.abs(a.delta.value * 100).toFixed(0)}%`;
   if (a.anomaly) {
     const verb = a.delta.value > 0 ? "jumped" : "dropped";
-    return `${scope} ${name} stayed within ${fmt(lo)}–${fmt(hi)} from ${mname(first)} through ${mname(lastPrior)}, then ${verb} to ${fmt(a.delta.current)} in ${mname(month)} (${chg} MoM) — about ${a.multiple!.toFixed(1)}× the usual month-to-month movement.`;
+    return `${scope} ${name} stayed within ${band(lo, hi)} from ${mname(first)} through ${mname(lastPrior)}, then ${verb} to ${fmt(a.delta.current)} in ${mname(month)} (${chg} month over month): about ${a.multiple!.toFixed(1)}× the usual monthly movement.`;
   }
-  return `${scope} ${name} has moved in a narrow band (${fmt(lo)}–${fmt(hi)}) since ${mname(first)}; ${mname(month)} came in at ${fmt(a.delta.current)} (${chg} MoM), which is within normal month-to-month variation.`;
+  return `${scope} ${name} has moved within ${band(lo, hi)} since ${mname(first)}; ${mname(month)} came in at ${fmt(a.delta.current)} (${chg} month over month), which is within normal monthly variation.`;
 }

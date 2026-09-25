@@ -21,8 +21,8 @@ export interface RankedRow {
 const chipTone = {
   bad: "bg-bad-soft text-bad",
   good: "bg-good-soft text-good",
-  warn: "bg-warn-soft text-[#a86f00]",
-  neutral: "bg-[#f0f0eb] text-mute",
+  warn: "bg-warn-soft text-warn",
+  neutral: "bg-line-2 text-mute",
 };
 
 /** Horizontal ranked bars with animated fill, hover state, optional growth chip and click-through. */
@@ -47,8 +47,8 @@ export function RankedBars({ rows, max, className, dense }: { rows: RankedRow[];
               "group grid w-full items-center gap-x-4 rounded-xl px-3 text-left transition",
               dense ? "py-2" : "py-2.5",
               "grid-cols-[minmax(120px,190px)_1fr_auto]",
-              r.onClick && "cursor-pointer hover:bg-[#f5f5f1]",
-              r.emphasis && "bg-[#fbfaf5]",
+              r.onClick && "cursor-pointer hover:bg-subtle",
+              r.emphasis && "bg-subtle",
               r.dim && "opacity-60",
             )}
           >
@@ -56,7 +56,7 @@ export function RankedBars({ rows, max, className, dense }: { rows: RankedRow[];
               <div className={cn("truncate text-[13.5px]", r.emphasis ? "font-semibold text-ink" : "font-medium text-ink-2")}>{r.label}</div>
               {r.sub && <div className="truncate text-[11px] text-mute">{r.sub}</div>}
             </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-[#f0f0eb]">
+            <div className="h-2.5 overflow-hidden rounded-full bg-line-2">
               <div
                 className="h-full rounded-full transition-[width] duration-700 ease-out"
                 style={{ width: ready ? `${w}%` : 0, background: r.color, transitionDelay: `${i * 45}ms` }}

@@ -1,69 +1,64 @@
 # Brightspeed Cancellation Intelligence
 
-An executive analytics app that walks from **"something is wrong"** → **where** → **why** → **could we have seen it coming?** → **what to do**.
-Every number is read from an Excel workbook — there are no copies of the data in the code.
+An executive analytics portal that moves from **"something is wrong"** to **where**, **why**, **could we have seen it coming?** and **what to do**.
+Every number is read from an Excel workbook; there are no copies of the data in the code.
+
+Live site: https://pssl-copilot.github.io/Insights-Portal/
 
 ## Run it
 
 ```
-dev.cmd            # Windows: uses the portable Node in .tools (no install needed)
-# or, with Node 20+ installed:
 npm install
 npm run dev        # http://localhost:3000
 npm run build      # static site in ./out
-npm run test:data  # parses the workbook and prints a summary + validation issues
+npm run test:data  # parses the workbook and prints a summary plus validation issues
 ```
 
-## Data source (source of truth)
+## Hosting
 
-`/data/Brightspeed_Scenario2_App_Data_Jan_Sep_2026.xlsx`
+The portal is a static site on GitHub Pages. `.github/workflows/deploy.yml` builds it on every push to `main` (or on demand from the Actions tab) and publishes it. The workbook is read at build time, so replacing the file and pushing is all that is needed to refresh the numbers.
 
-The site is static: the workbook is read at build time. Replace the file and push to `main` — GitHub Actions rebuilds and redeploys to GitHub Pages (`.github/workflows/deploy.yml`). In `npm run dev`, edits show on refresh. Set `BRIGHTSPEED_DATA_FILE` to point at a workbook elsewhere.
+## Data source
 
-### Sheets and columns the app reads
+`/data/Brightspeed_Cancellation_Data_Jan_Sep_2026.xlsx` (set `BRIGHTSPEED_DATA_FILE` to use a workbook elsewhere).
 
-| Sheet | Shape | Columns (header row is auto-detected below any title block) |
+| Sheet | Shape | Columns (the header row is detected below any title block) |
 |---|---|---|
-| Dashboard KPI | 2 tables | **KPI Card · September Value · August / Prior · Change · Card Group · Executive meaning**, then a hotspot block **Metric · August · September · Change · Why it matters** (its title row names the state) |
-| Monthly Overview | 1 row / month | Month · Unique Sales · Sales MoM % · Installs · Install Rate · Cancellations · Cancels MoM % · Cancel Rate · Pre/On/Post-ODD % · Customer/Company Miss % · Faux % · Pending Customer Contact % · Action Needed Not Jeopardy % · Install in Jeopardy % · BSW Delay Predicted % · On-Time Install % |
-| State Monthly | state × month | Month · State · Unique Sales · Installs · Cancellations · Cancel Rate · Cancels MoM % · Pre/On/Post-ODD Cancels & % · Customer Miss / Company Miss / Faux Cancels & % |
-| September State Drill | state, one month | State · Unique Sales · Installs · Cancellations · Cancel Rate · Cancel Growth vs Aug · Pre/On/Post-ODD % · Customer Miss % · Pending Customer Contact % · On-Time Install % (month is read from the sheet title) |
-| ODD Timing | 1 row / month | Month · Pre/On/Post-ODD Cancels & % |
-| Cancel Classification | 1 row / month | Month · Customer Miss / Company Miss / Faux Cancels & % |
-| Customer Miss Reasons | state × month × reason | Month · State · Reason · Count · Share of State Customer Miss · Month-over-Month Change · Scenario Flag · Insight |
-| Watchtower Signals | state, one month + portfolio row | State · No Action Needed % · Pending Customer Contact % · Action Needed Not Jeopardy % · Install in Jeopardy % · BSW Delay Predicted % · Primary interpretation |
-| Example Customer Journey | steps | Step · Date · Lifecycle Event · Watchtower / Status · Risk interpretation · Recommended action |
-| Executive Questions | 5 rows | Executive question · Scenario 2 answer · Evidence · Recommended next step · Primary app drill |
-| Data Dictionary | rows | Field / KPI · Definition · Unit / Format · Primary source sheet · Scenario note |
-| *Channel Monthly* (optional, future) | channel × month | Month · Channel · Unique Sales · Installs · Cancellations — when present, every KPI's **Channels** tab populates automatically |
+| Dashboard KPI | 3 blocks | KPI cards (KPI Card, September Value, August / Prior, Change, Card Group, Executive meaning), the state hotspot block, and the channel snapshot |
+| Monthly Overview | month | Sales, installs, cancellations, rates, Pre / On / Post ODD %, classification %, Watchtower %, On Time Install % |
+| State Monthly | state × month | Volumes, Pre / On / Post ODD, Customer Miss / Company Miss / Faux, Watchtower % and On Time Install % |
+| Channel Monthly | channel × month | The same measures by sales channel |
+| September State Drill / Channel Drill | one month | State or channel comparison for the latest month |
+| September State x Channel | state × channel | Cross view for the latest month |
+| ODD Timing, Cancel Classification | month | Portfolio timing and classification |
+| Customer Miss Reasons | state × month × reason | Count, share, month over month change, flag, insight |
+| Watchtower Signals | state + portfolio | Watchtower state before cancellation |
+| Example Customer Journey, Executive Questions, Data Dictionary | reference | Narrative content |
 
-Handled: title/blank rows, Excel date serials, numbers stored as text (`"1,234"`, `"12%"`), whole-number percentages (`34` → `0.34`), missing optional columns (shown as "—", never as 0), header aliases.
+Validation runs on every build: missing sheets or columns are errors; cross sheet mismatches are warnings. Both appear on the Settings page.
 
-### Validation (Settings → Data source, plus an in-app banner)
-Missing sheets/columns are **errors**; cross-sheet mismatches are **warnings** (state totals vs portfolio, Pre+On+Post vs cancellations, Customer+Company+Faux vs cancellations, KPI cards vs Monthly Overview). Everything is also logged to the server console with a `[data]` prefix.
+## Pages
+
+Command Center, Cancellations (timing, Customer Miss, classification, each with a focus state and channel insight), State Wise Plan, Channel Wise Plan, Insights, Sales to Install Journey, Watchtower and Actions. Actions can be initiated: the portal drafts the email to the task owner from the data, the user reviews it and sends it through their mail client, and the status is tracked in the browser. Owner mailboxes are set in `OWNER_EMAILS` in `lib/data/narratives.ts`.
+
+Light and dark themes follow the system setting and can be switched from the top bar.
+
+## Insights Genie
+
+`lib/ai/queryEngine.ts` answers questions entirely in the browser with no external API. It parses the metric (sales, installs, cancellations, cancel rate, Pre / On / Post ODD, Customer Miss, Watchtower signals, reasons), the month or months ("July", "last month", "since June"), the state and the channel, then looks the exact values up in the model. It handles single values, comparisons, rankings, trends, breakdowns and insights; "why" and "what next" questions are answered by the narrative layer, which is also computed from the data.
 
 ## Architecture
 
 ```
 lib/data/
   types.ts            normalized model (fractions for %, YYYY-MM month keys, null = not in workbook)
-  tableParser.ts      generic header-detecting sheet → typed rows (dates, %, strings-as-numbers)
-  excelLoader.ts      server-side read + mtime cache            ← the only file that touches disk
-  transformations.ts  per-sheet column specs → DataModel, cross-validation
-  metrics.ts          KPI registry, snapshots (month × state), deltas, anomaly assessment, rankings
-  narratives.ts       executive summary, diagnosis, insights, actions, state story (all rule-based on the data)
-lib/ai/queryEngine.ts intent interpreter behind an `AnswerProvider` interface (swap in an LLM later)
+  tableParser.ts      header detecting sheet parser
+  excelLoader.ts      reads the workbook at build time
+  transformations.ts  per sheet column specs → DataModel, cross validation
+  metrics.ts          KPI registry, snapshots by month and scope (portfolio, state or channel), deltas, rankings
+  narratives.ts       executive summary, diagnosis, focus insights, insights, actions and owner emails
+lib/ai/queryEngine.ts the Insights Genie
 components/           layout · kpi · charts · insights · drilldown · ai · ui
-app/                  / · /insights · /cancellations · /journey · /states[/slug] · /watchtower · /actions · /settings
 ```
 
-* The server layout loads the model (`force-dynamic`) and hands it to client components; all analytics are pure functions of `(model, month, state)`.
-* **Status colours** (red/amber/green) and "anomaly" flags come from comparing the selected month's move with that series' own historical month-to-month noise — not from hard-coded thresholds — so they adapt to whatever the workbook contains.
-* **Root cause** ("customer engagement / appointment readiness") is inferred by rule from the data: customer-side share, Pending Customer Contact rising faster than BSW/jeopardy, Post-ODD shift, Company Miss movement. If the data doesn't fit, the summary says the cause is *mixed* or *operational* instead.
-
-## Known data limits (shown honestly in the UI)
-* No channel dataset → Channels tab shows a data-pending state.
-* Pending Customer Contact, On-Time Install and other Watchtower states exist per state only for the drill month; earlier months show "—". (The Dashboard KPI hotspot block supplies the prior-month Pending % for its state.)
-* Classification and reasons aren't split by ODD bucket in the workbook, so the timing drill-down labels those panels as "all cancellations in the selection".
-* Watchtower story percentages are shares at each stage, not a tracked per-order funnel.
-* Action status changes are saved in the browser only (prototype).
+Colours follow business direction: growth in sales or installs is green, growth in any cancellation measure is red. Exception flags compare the month's movement with that series' own historical monthly variation.

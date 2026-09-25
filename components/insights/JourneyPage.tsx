@@ -32,9 +32,9 @@ export function JourneyPage() {
 
   const lifecycle = [
     { label: "Order placed", n: s.sales, sub: "Unique Sales", color: C.ink },
-    { label: "Before ODD", n: s.preCancels, sub: "Pre-ODD cancels", color: C.slate },
-    { label: "On ODD", n: s.onCancels, sub: "On-ODD cancels", color: C.lilac },
-    { label: "After ODD", n: s.postCancels, sub: "Post-ODD cancels", color: C.indigo, hot: true },
+    { label: "Before ODD", n: s.preCancels, sub: "Pre ODD cancels", color: C.slate },
+    { label: "On ODD", n: s.onCancels, sub: "On ODD cancels", color: C.lilac },
+    { label: "After ODD", n: s.postCancels, sub: "Post ODD cancels", color: C.indigo, hot: true },
     { label: "Installed", n: s.installs, sub: "Installs", color: C.good },
   ];
 
@@ -46,7 +46,7 @@ export function JourneyPage() {
         <div className="grid gap-3 md:grid-cols-5">
           {lifecycle.map((l, i) => (
             <Reveal key={l.label} delay={i * 80}>
-              <div className={cn("relative h-full rounded-2xl border p-4", l.hot ? "border-ink bg-ink text-white" : "border-line bg-[#fbfbf8]")}>
+              <div className={cn("relative h-full rounded-2xl border p-4", l.hot ? "border-ink bg-panel text-white" : "border-line bg-subtle")}>
                 <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: l.hot ? "#FFC72C" : undefined }}>
                   <span className="size-2.5 rounded-full" style={{ background: l.color }} />{l.label}
                 </div>
@@ -63,15 +63,15 @@ export function JourneyPage() {
       </Card>
 
       <section>
-        <SectionTitle eyebrow="Example customer journey" title="One order, start to cancellation" sub="A representative Scenario 2 order from the workbook. Scroll to follow it — and watch where Brightspeed could have stepped in." />
+        <SectionTitle eyebrow="Example customer journey" title="One order, start to cancellation" sub="A representative North Carolina D2D order. Follow it step by step to see where Brightspeed could have intervened." />
         <div className="mt-6 flex flex-wrap gap-3">
           <Chip icon={<Route className="size-4" />} label="Steps" value={String(steps.length)} />
-          {days !== null && <Chip icon={<Clock className="size-4" />} label="Order → cancel" value={`${days} days`} />}
+          {days !== null && <Chip icon={<Clock className="size-4" />} label="Order to cancel" value={`${days} days`} />}
           <Chip icon={<HandHelping className="size-4" />} label="Moments to intervene" value={String(chances)} tone="warn" />
         </div>
 
         <ol className="relative mt-8 space-y-2 pl-2 sm:pl-6">
-          <div className="absolute bottom-6 left-[19px] top-6 w-px bg-gradient-to-b from-[#d9d9d1] via-[#d9d9d1] to-bad sm:left-[43px]" />
+          <div className="absolute bottom-6 left-[19px] top-6 w-px bg-gradient-to-b from-line via-line to-bad sm:left-[43px]" />
           {steps.map((st, i) => {
             const tone = riskTone(st);
             const intervene = INTERVENE.test(st.action) && !FINAL.test(st.event);
@@ -84,7 +84,7 @@ export function JourneyPage() {
                   </span>
                   <span className="num mt-1.5 hidden text-[11px] font-semibold text-mute sm:block">{fmtDate(st.date)}</span>
                 </div>
-                <div className={cn("rounded-[18px] border bg-white p-4 shadow-card transition hover:shadow-pop sm:p-5", last && "border-bad/40 bg-[#fffafa]")}>
+                <div className={cn("rounded-[18px] border bg-card p-4 shadow-card transition hover:shadow-pop sm:p-5", last && "border-bad/40 bg-bad-soft")}>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="num text-xs font-semibold text-mute sm:hidden">{fmtDate(st.date)}</span>
                     <span className="eyebrow">Step {st.step}</span>
@@ -93,7 +93,7 @@ export function JourneyPage() {
                   </div>
                   <h4 className="mt-2 text-[17px] font-semibold leading-snug">{st.event}</h4>
                   <div className="mt-2 grid gap-x-8 gap-y-1 text-[13px] sm:grid-cols-2">
-                    {st.risk && <div><span className="text-mute">Risk: </span><span className={cn("font-semibold", tone === "bad" ? "text-bad" : tone === "warn" ? "text-[#a86f00]" : "")}>{st.risk}</span></div>}
+                    {st.risk && <div><span className="text-mute">Risk: </span><span className={cn("font-semibold", tone === "bad" ? "text-bad" : tone === "warn" ? "text-warn" : "")}>{st.risk}</span></div>}
                     {st.action && <div><span className="text-mute">Recommended: </span><span className="font-semibold">{st.action}</span></div>}
                   </div>
                 </div>
@@ -108,7 +108,7 @@ export function JourneyPage() {
 
 function Chip({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string; tone?: "warn" }) {
   return (
-    <div className={cn("flex items-center gap-2.5 rounded-full border bg-white px-4 py-2 text-[13px] shadow-card", tone === "warn" ? "border-warn/40" : "border-line")}>
+    <div className={cn("flex items-center gap-2.5 rounded-full border bg-card px-4 py-2 text-[13px] shadow-card", tone === "warn" ? "border-warn/40" : "border-line")}>
       <span className="text-mute">{icon}</span>
       <span className="text-mute">{label}</span>
       <strong className="num">{value}</strong>

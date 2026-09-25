@@ -15,7 +15,7 @@ export function Card({ className, children, interactive, ...rest }: { className?
       {...rest}
       className={cn(
         "rounded-[18px] border border-line bg-card shadow-card",
-        interactive && "transition duration-200 hover:-translate-y-0.5 hover:border-[#d9d9d1] hover:shadow-pop cursor-pointer",
+        interactive && "transition duration-200 hover:-translate-y-0.5 hover:border-line hover:shadow-pop cursor-pointer",
         className,
       )}
     >
@@ -39,13 +39,13 @@ export function SectionTitle({ eyebrow, title, sub, right, className }: { eyebro
 
 type Tone = "neutral" | "bad" | "good" | "warn" | "indigo" | "brand" | "ink";
 const tones: Record<Tone, string> = {
-  neutral: "bg-[#f0f0eb] text-mute",
+  neutral: "bg-line-2 text-mute",
   bad: "bg-bad-soft text-bad",
   good: "bg-good-soft text-good",
-  warn: "bg-warn-soft text-[#a86f00]",
+  warn: "bg-warn-soft text-warn",
   indigo: "bg-indigo-soft text-indigo",
-  brand: "bg-brand text-ink",
-  ink: "bg-ink text-white",
+  brand: "bg-brand text-[#111]",
+  ink: "bg-panel text-white",
 };
 
 export function Badge({ tone = "neutral", children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
@@ -53,7 +53,14 @@ export function Badge({ tone = "neutral", children, className }: { tone?: Tone; 
 }
 
 export const statusTone = (s: Status): Tone => (s === "critical" ? "bad" : s === "warning" ? "warn" : s === "healthy" ? "good" : "neutral");
-export const statusColor = (s: Status) => (s === "critical" ? "#e5484d" : s === "warning" ? "#e59b12" : s === "healthy" ? "#2f9e6e" : "#9a9a94");
+export const statusColor = (s: Status) => (s === "critical" ? "#d92d20" : s === "warning" ? "#e59b12" : s === "healthy" ? "#12a150" : "#9a9a94");
+
+/** Business direction colour: growth in sales or installs is good, growth in any cancellation measure is bad. */
+export function dirTone(good: "up" | "down" | "neutral", delta: number | null | undefined): "good" | "bad" | "neutral" {
+  if (delta === null || delta === undefined || good === "neutral" || Math.abs(delta) < 1e-9) return "neutral";
+  return (delta > 0) === (good === "up") ? "good" : "bad";
+}
+export const toneColor = (t: "good" | "bad" | "neutral") => (t === "good" ? "#12a150" : t === "bad" ? "#d92d20" : "#f28c28");
 
 export function StatusDot({ status, pulse }: { status: Status; pulse?: boolean }) {
   return (
@@ -80,10 +87,10 @@ export function Button({
   variant = "primary", size = "md", className, children, ...rest
 }: { variant?: "primary" | "brand" | "ghost" | "outline"; size?: "sm" | "md" | "lg" } & ButtonHTMLAttributes<HTMLButtonElement>) {
   const v = {
-    primary: "bg-ink text-white hover:bg-ink-2",
-    brand: "bg-brand text-ink hover:brightness-95",
+    primary: "bg-panel text-white hover:bg-panel-2",
+    brand: "bs-gradient text-[#111] hover:brightness-95",
     ghost: "text-ink hover:bg-black/5",
-    outline: "border border-line bg-white text-ink hover:border-ink",
+    outline: "border border-line bg-card text-ink hover:border-ink",
   }[variant];
   const s = { sm: "h-8 px-3 text-xs", md: "h-10 px-4 text-sm", lg: "h-12 px-6 text-[15px]" }[size];
   return (
@@ -97,10 +104,10 @@ export function LinkButton({
   href, children, variant = "outline", size = "md", arrow = true, className,
 }: { href: string; children: ReactNode; variant?: "primary" | "brand" | "ghost" | "outline"; size?: "sm" | "md" | "lg"; arrow?: boolean; className?: string }) {
   const v = {
-    primary: "bg-ink text-white hover:bg-ink-2",
-    brand: "bg-brand text-ink hover:brightness-95",
+    primary: "bg-panel text-white hover:bg-panel-2",
+    brand: "bs-gradient text-[#111] hover:brightness-95",
     ghost: "text-ink hover:bg-black/5",
-    outline: "border border-line bg-white text-ink hover:border-ink",
+    outline: "border border-line bg-card text-ink hover:border-ink",
   }[variant];
   const s = { sm: "h-8 px-3 text-xs", md: "h-10 px-4 text-sm", lg: "h-12 px-6 text-[15px]" }[size];
   return (
@@ -115,7 +122,7 @@ export function Tabs<T extends string>({
   tabs, value, onChange, className, size = "md",
 }: { tabs: { id: T; label: string; hint?: string }[]; value: T; onChange: (t: T) => void; className?: string; size?: "sm" | "md" }) {
   return (
-    <div role="tablist" className={cn("inline-flex max-w-full flex-wrap gap-1 rounded-full border border-line bg-[#f0f0eb] p-1", className)}>
+    <div role="tablist" className={cn("inline-flex max-w-full flex-wrap gap-1 rounded-full border border-line bg-line-2 p-1", className)}>
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -125,7 +132,7 @@ export function Tabs<T extends string>({
           className={cn(
             "rounded-full font-semibold transition",
             size === "sm" ? "px-3 py-1 text-xs" : "px-4 py-1.5 text-[13px]",
-            value === t.id ? "bg-ink text-white shadow-sm" : "text-mute hover:text-ink",
+            value === t.id ? "bg-panel text-white shadow-sm" : "text-mute hover:text-ink",
           )}
         >
           {t.label}
@@ -155,8 +162,8 @@ export function RichText({ text, className }: { text: string; className?: string
 
 export function EmptyState({ title, children, icon }: { title: string; children?: ReactNode; icon?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[#d6d6cf] bg-[#fafaf7] px-8 py-14 text-center">
-      <div className="grid size-11 place-items-center rounded-full bg-white text-mute shadow-card">{icon ?? <DatabaseZap className="size-5" />}</div>
+    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line bg-subtle px-8 py-14 text-center">
+      <div className="grid size-11 place-items-center rounded-full bg-card text-mute shadow-card">{icon ?? <DatabaseZap className="size-5" />}</div>
       <div className="text-[15px] font-semibold">{title}</div>
       {children && <div className="max-w-md text-sm text-mute">{children}</div>}
     </div>
@@ -164,7 +171,7 @@ export function EmptyState({ title, children, icon }: { title: string; children?
 }
 
 export function Delta({ value, kind, tone, className, digits = 0 }: { value: number | null; kind: "rel" | "pp"; tone?: "bad" | "good" | "neutral"; className?: string; digits?: number }) {
-  if (value === null) return <span className={cn("text-xs text-soft", className)}>—</span>;
+  if (value === null) return <span className={cn("text-xs text-soft", className)}>n/a</span>;
   const p = value * 100;
   const sign = Number(Math.abs(p).toFixed(digits)) === 0 ? "" : p > 0 ? "+" : "−";
   const txt = `${sign}${Math.abs(p).toFixed(digits)}${kind === "pp" ? " pp" : "%"}`;

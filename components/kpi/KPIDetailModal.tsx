@@ -2,10 +2,11 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ChevronRight, Sparkles } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
+import { GenieMark } from "../ui/Marks";
 import { useApp } from "../AppContext";
 import { Modal } from "../ui/Modal";
-import { Badge, Button, Card, cn, Delta, Tabs } from "../ui/primitives";
+import { Badge, Button, Card, cn, Delta, dirTone, Tabs } from "../ui/primitives";
 import { TrendChart } from "../charts/TrendChart";
 import { StateRanking, StateTable } from "../charts/StateRanking";
 import { ODDTimingChart, ODD_COLORS, type OddBucket } from "../charts/ODDTimingChart";
@@ -19,6 +20,8 @@ import { fmtInt, fmtPct0, fmtPp, fmtSignedPct, monthLabel, monthShort, stateSlug
 
 type TabId = "trend" | "states" | "channels" | "odd" | "class" | "drivers" | "signals";
 
+const SIMPLE = new Set(["sales", "installs", "onTime"]);
+
 const BASE_TABS: { id: TabId; label: string }[] = [
   { id: "trend", label: "Trend" },
   { id: "states", label: "States" },
@@ -30,12 +33,12 @@ const BASE_TABS: { id: TabId; label: string }[] = [
 
 function NextStep({ question, label, onClick }: { question: string; label: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="group mt-5 flex w-full items-center justify-between gap-4 rounded-2xl border border-dashed border-[#cfcfc6] bg-white px-5 py-4 text-left transition hover:border-ink hover:bg-[#fbfaf5]">
+    <button onClick={onClick} className="group mt-5 flex w-full items-center justify-between gap-4 rounded-2xl border border-dashed border-line bg-card px-5 py-4 text-left transition hover:border-ink hover:bg-subtle">
       <div>
         <div className="eyebrow mb-0.5">Keep investigating</div>
         <div className="text-[15px] font-semibold">{question}</div>
       </div>
-      <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-white transition group-hover:bg-ink-2">
+      <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-panel px-4 py-2 text-[13px] font-semibold text-white transition group-hover:bg-panel-2">
         {label} <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
       </span>
     </button>
@@ -44,7 +47,7 @@ function NextStep({ question, label, onClick }: { question: string; label: strin
 
 function Stat({ label, value, sub, tone }: { label: string; value: ReactNode; sub?: ReactNode; tone?: "bad" | "good" }) {
   return (
-    <div className="rounded-2xl border border-line bg-white px-4 py-3.5">
+    <div className="rounded-2xl border border-line bg-card px-4 py-3.5">
       <div className="eyebrow">{label}</div>
       <div className={cn("num mt-1 text-2xl font-semibold", tone === "bad" && "text-bad", tone === "good" && "text-good")}>{value}</div>
       {sub && <div className="mt-0.5 text-xs text-mute">{sub}</div>}
@@ -67,8 +70,10 @@ function ModalBody({ def, initialTab, initialState, onClose }: { def: KpiDef; in
   const [oddMode, setOddMode] = useState<"count" | "pct">("count");
   const [bucket, setBucket] = useState<OddBucket | null>(null);
 
-  const tabs = def.group === "watch" ? [...BASE_TABS, { id: "signals" as TabId, label: "Signals" }] : BASE_TABS;
+  // Sales, installs and on time install are volume measures: cancellation timing, classification and drivers do not apply.
+  const tabs = SIMPLE.has(def.id) ? BASE_TABS.slice(0, 3) : def.group === "watch" ? [...BASE_TABS, { id: "signals" as TabId, label: "Signals" }] : BASE_TABS;
   const a = useMemo(() => assess(model, def, month, focus), [model, def, month, focus]);
+  const tone = dirTone(def.good, a.delta?.value);
   const snap = getSnapshot(model, month, focus);
   const value = snapVal(snap, def.key);
   const pm = prevMonth(model, month);
@@ -92,14 +97,14 @@ function ModalBody({ def, initialTab, initialState, onClose }: { def: KpiDef; in
       header={
         <div className="px-5 pb-4 pt-5 sm:px-7">
           <div className="eyebrow mb-2 flex items-center gap-2">
-            <span className="size-1.5 rounded-full bg-brand" /> {def.label} — Deep dive
+            <span className="size-1.5 rounded-full bg-brand" /> {def.label}: deep dive
           </div>
           <div className="flex flex-wrap items-end gap-x-6 gap-y-2 pr-12">
             <div className="num text-[44px] font-semibold leading-none tracking-tight">{formatCompactKpi(def, value)}</div>
             <div className="flex items-center gap-2 pb-1">
-              <Delta value={a.delta?.value ?? null} kind={a.delta?.kind ?? "rel"} tone={a.status === "critical" ? "bad" : a.status === "healthy" ? "good" : "neutral"} className="!text-base" />
+              <Delta value={a.delta?.value ?? null} kind={a.delta?.kind ?? "rel"} tone={tone} className="!text-base" />
               <span className="text-sm text-mute">vs {pm ? monthLabel(pm).split(" ")[0] : "prior month"}</span>
-              {a.anomaly && a.status !== "neutral" && <Badge tone={a.status === "critical" ? "bad" : "warn"}>ANOMALY · {a.multiple!.toFixed(1)}× normal move</Badge>}
+              {a.anomaly && a.status !== "neutral" && <Badge tone={a.status === "critical" ? "bad" : "warn"}>EXCEPTION · {a.multiple!.toFixed(1)}× normal move</Badge>}
             </div>
             <div className="ml-auto hidden flex-wrap items-center gap-2 pb-1 md:flex">
               <Badge>{monthLabel(month)}</Badge>
@@ -131,7 +136,7 @@ function ModalBody({ def, initialTab, initialState, onClose }: { def: KpiDef; in
           <Card className="p-5 sm:p-6">
             <div className="mb-1 flex items-center justify-between">
               <div>
-                <div className="text-[15px] font-semibold">{def.label} · {model.months.length ? `${monthShort(model.months[0])}–${monthShort(model.months[model.months.length - 1])}` : ""}</div>
+                <div className="text-[15px] font-semibold">{def.label} · {model.months.length ? `${monthShort(model.months[0])} to ${monthShort(model.months[model.months.length - 1])}` : ""}</div>
                 <div className="text-xs text-mute">{focus ?? "Portfolio"} · click a point to switch the month</div>
               </div>
             </div>
@@ -145,11 +150,11 @@ function ModalBody({ def, initialTab, initialState, onClose }: { def: KpiDef; in
           </Card>
           <div className="grid gap-4 md:grid-cols-3">
             <Stat label={`Current · ${monthShort(month)}`} value={formatKpiValue(def, value, true)} />
-            <Stat label={`Previous · ${pm ? monthShort(pm) : "—"}`} value={formatKpiValue(def, a.delta?.previous ?? null, true)} />
-            <Stat label="MoM change" value={a.delta ? (a.delta.kind === "pp" ? fmtPp(a.delta.value) : fmtSignedPct(a.delta.value)) : "—"} tone={a.status === "critical" ? "bad" : a.status === "healthy" ? "good" : undefined} sub={a.baseline !== null ? `Typical move ≈ ${def.unit === "pct" ? fmtPp(a.baseline) : fmtSignedPct(a.baseline)}` : undefined} />
+            <Stat label={`Previous · ${pm ? monthShort(pm) : "n/a"}`} value={formatKpiValue(def, a.delta?.previous ?? null, true)} />
+            <Stat label="MoM change" value={a.delta ? (a.delta.kind === "pp" ? fmtPp(a.delta.value) : fmtSignedPct(a.delta.value)) : "n/a"} tone={tone === "neutral" ? undefined : tone} sub={a.baseline !== null ? `Typical move ≈ ${def.unit === "pct" ? fmtPp(a.baseline) : fmtSignedPct(a.baseline)}` : undefined} />
           </div>
-          <Card className="flex gap-4 border-brand/60 bg-[#fffaf0] p-5">
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-ink text-brand"><Sparkles className="size-4" /></span>
+          <Card className="flex gap-4 border-brand/60 bg-brand-soft p-5">
+            <GenieMark size={36} className="shrink-0" />
             <div>
               <div className="eyebrow mb-1">Insight</div>
               <p className="text-[14.5px] leading-relaxed text-ink-2">{describeTrend(model, def, month, focus)}</p>
@@ -177,7 +182,7 @@ function ModalBody({ def, initialTab, initialState, onClose }: { def: KpiDef; in
             </Card>
           </div>
           {drillTarget && (
-            <Card className="flex flex-wrap items-center justify-between gap-4 bg-ink p-5 text-white">
+            <Card className="flex flex-wrap items-center justify-between gap-4 bg-panel p-5 text-white">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-white/50">{focus ? "Focused state" : "Sharpest growth"}</div>
                 <div className="text-lg font-semibold">
@@ -196,8 +201,8 @@ function ModalBody({ def, initialTab, initialState, onClose }: { def: KpiDef; in
       {/* ---------------------------------------------------------------- CHANNELS */}
       {tab === "channels" && (
         <Card className="p-5 sm:p-6">
-          <div className="mb-4 text-[15px] font-semibold">Channel breakdown · {monthLabel(month)}</div>
-          <ChannelBreakdown model={model} month={month} />
+          <div className="mb-4 text-[15px] font-semibold">{def.label} by channel · {monthLabel(month)}</div>
+          <ChannelBreakdown model={model} month={month} def={def} onSelect={(c) => { onClose(); router.push(`/channels/${stateSlug(c)}?${q}`); }} />
         </Card>
       )}
 
@@ -221,15 +226,15 @@ function ModalBody({ def, initialTab, initialState, onClose }: { def: KpiDef; in
               const p = pm ? getSnapshot(model, pm, focus) : null;
               const dd = p && snap[key] !== null && p[key] !== null ? (snap[key] as number) - (p[key] as number) : null;
               return (
-                <button key={b} onClick={() => setBucket(bucket === b ? null : b)} className={cn("rounded-2xl border bg-white p-4 text-left transition hover:border-ink", bucket === b ? "border-ink ring-2 ring-brand/50" : "border-line")}>
-                  <div className="flex items-center gap-2 text-[12px] font-semibold text-mute"><span className="size-2.5 rounded-full" style={{ background: ODD_COLORS[b] }} />{b === "pre" ? "Pre-ODD" : b === "on" ? "On-ODD" : "Post-ODD"}</div>
+                <button key={b} onClick={() => setBucket(bucket === b ? null : b)} className={cn("rounded-2xl border bg-card p-4 text-left transition hover:border-ink", bucket === b ? "border-ink ring-2 ring-brand/50" : "border-line")}>
+                  <div className="flex items-center gap-2 text-[12px] font-semibold text-mute"><span className="size-2.5 rounded-full" style={{ background: ODD_COLORS[b] }} />{b === "pre" ? "Pre ODD" : b === "on" ? "On ODD" : "Post ODD"}</div>
                   <div className="mt-1 flex items-baseline gap-2"><span className="num text-2xl font-semibold">{fmtPct0(snap[key])}</span><span className={cn("num text-xs font-semibold", b === "post" && (dd ?? 0) > 0.03 ? "text-bad" : "text-mute")}>{fmtPp(dd)}</span></div>
                   <div className="text-xs text-mute">{fmtInt(snap[cnt])} cancels</div>
                 </button>
               );
             })}
           </div>
-          <NextStep question="Who owns the miss — customer or company?" label="See classification" onClick={() => setTab("class")} />
+          <NextStep question="Who owns the miss: customer or company?" label="See classification" onClick={() => setTab("class")} />
         </div>
       )}
 
@@ -254,7 +259,7 @@ function ModalBody({ def, initialTab, initialState, onClose }: { def: KpiDef; in
           <Card className="p-5 sm:p-6">
             <div className="mb-3">
               <div className="text-[15px] font-semibold">Customer Miss reasons · {focus ?? "Portfolio"} · {monthLabel(month)}</div>
-              <div className="text-xs text-mute">Ranked by volume; chips show change vs prior month. Late-stage readiness reasons are highlighted when they surge.</div>
+              <div className="text-xs text-mute">Ranked by volume; chips show change vs prior month. Late stage readiness reasons are highlighted when they surge.</div>
             </div>
             <CustomerMissDrivers model={model} month={month} state={focus} />
           </Card>

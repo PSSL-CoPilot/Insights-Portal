@@ -4,7 +4,7 @@ import { useId } from "react";
 
 /** Tiny dependency-free sparkline. `values` may contain nulls (rendered as gaps). The last point is emphasised. */
 export function Sparkline({
-  values, color = "#5b5fe6", width = 96, height = 30, highlightLast = true, fill = true,
+  values, color = "#f28c28", width = 96, height = 30, highlightLast = true, fill = true,
 }: { values: (number | null)[]; color?: string; width?: number; height?: number; highlightLast?: boolean; fill?: boolean }) {
   const id = useId();
   const pts = values.map((v, i) => ({ v, i })).filter((p): p is { v: number; i: number } => p.v !== null);
@@ -28,7 +28,7 @@ export function Sparkline({
       </defs>
       {fill && <path d={area} fill={`url(#${id})`} />}
       <path d={d} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      {highlightLast && <circle cx={x(last.i)} cy={y(last.v)} r="2.6" fill="#fff" stroke={color} strokeWidth="1.6" />}
+      {highlightLast && <circle cx={x(last.i)} cy={y(last.v)} r="2.6" fill="var(--color-card)" stroke={color} strokeWidth="1.6" />}
     </svg>
   );
 }
