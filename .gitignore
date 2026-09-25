@@ -3,3 +3,4 @@ node_modules
 .tools
 *.tsbuildinfo
 next-env.d.ts
+out

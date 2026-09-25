@@ -10,7 +10,7 @@ dev.cmd            # Windows: uses the portable Node in .tools (no install neede
 # or, with Node 20+ installed:
 npm install
 npm run dev        # http://localhost:3000
-npm run build && npm start
+npm run build      # static site in ./out
 npm run test:data  # parses the workbook and prints a summary + validation issues
 ```
 
@@ -18,7 +18,7 @@ npm run test:data  # parses the workbook and prints a summary + validation issue
 
 `/data/Brightspeed_Scenario2_App_Data_Jan_Sep_2026.xlsx`
 
-Replace or edit the file and **refresh the page** — the loader compares the file's modified-time on every request and re-parses when it changed. Set `BRIGHTSPEED_DATA_FILE` to point at a workbook elsewhere.
+The site is static: the workbook is read at build time. Replace the file and push to `main` — GitHub Actions rebuilds and redeploys to GitHub Pages (`.github/workflows/deploy.yml`). In `npm run dev`, edits show on refresh. Set `BRIGHTSPEED_DATA_FILE` to point at a workbook elsewhere.
 
 ### Sheets and columns the app reads
 

@@ -10,9 +10,6 @@ export const metadata: Metadata = {
   description: "From “something is wrong” to “here is what to do” — an executive command center for cancellations.",
 };
 
-// The workbook is the source of truth: re-read it on every request (cached by file mtime).
-export const dynamic = "force-dynamic";
-
 export default function RootLayout({ children }: { children: ReactNode }) {
   const model = loadDataModel();
 
