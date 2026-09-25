@@ -68,11 +68,11 @@ export const KPI_DEFS: KpiDef[] = [
   { id: "faux", label: "Faux Cancel %", group: "responsibility", unit: "pct", key: "fauxPct", good: "neutral", companion: { key: "faux", label: "Faux cancels" }, cardLabel: "Faux Cancel %", blurb: "Cancellation with no true revenue loss." },
   { id: "true", label: "True Cancels", group: "responsibility", unit: "count", key: "trueCancels", good: "down", cardLabel: "True Cancels", blurb: "Customer Miss plus Company Miss." },
 
-  { id: "r-buyers", label: REASON_LABELS.buyers, group: "drivers", unit: "count", key: reasonKey(REASON_LABELS.buyers), good: "down", cardLabel: REASON_LABELS.buyers, blurb: "Customer changed their mind after ordering." },
   { id: "r-cancel", label: REASON_LABELS.cancel, group: "drivers", unit: "count", key: reasonKey(REASON_LABELS.cancel), good: "down", cardLabel: REASON_LABELS.cancel, blurb: "Customer explicitly asked to cancel." },
   { id: "r-noaccess", label: REASON_LABELS.noAccess, group: "drivers", unit: "count", key: reasonKey(REASON_LABELS.noAccess), good: "down", cardLabel: REASON_LABELS.noAccess, blurb: "Technician could not access the premises." },
   { id: "r-resched", label: REASON_LABELS.resched, group: "drivers", unit: "count", key: reasonKey(REASON_LABELS.resched), good: "down", cardLabel: REASON_LABELS.resched, blurb: "Customer asked to reschedule, then cancelled." },
   { id: "r-tech", label: REASON_LABELS.tech, group: "drivers", unit: "count", key: reasonKey(REASON_LABELS.tech), good: "down", cardLabel: REASON_LABELS.tech, blurb: "Customer cancelled while the technician was on site." },
+  { id: "r-buyers", label: REASON_LABELS.buyers, group: "drivers", unit: "count", key: reasonKey(REASON_LABELS.buyers), good: "down", cardLabel: REASON_LABELS.buyers, blurb: "Customer changed their mind after ordering." },
 
   { id: "pending", label: "Pending Customer Contact %", group: "watch", unit: "pct", key: "pendingPct", good: "down", cardLabel: "Pending Customer Contact %", blurb: "Share of cancellations that carried an unresolved customer contact state." },
   { id: "action", label: "Action Needed Not Jeopardy %", group: "watch", unit: "pct", key: "actionPct", good: "down", cardLabel: "Action Needed Not Jeopardy %", blurb: "Action required even without technical jeopardy." },
