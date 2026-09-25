@@ -26,7 +26,7 @@ export function Modal({
       <div className="fixed inset-0 animate-fade bg-panel/45 backdrop-blur-[3px]" onClick={onClose} />
       <div
         className={cn(
-          "relative my-auto w-full max-w-[1280px] animate-rise overflow-hidden rounded-[24px] border border-line bg-canvas shadow-pop lg:w-[82vw]",
+          "modal-enter relative my-auto w-full max-w-[1280px] overflow-hidden rounded-[24px] border border-line bg-canvas shadow-pop lg:w-[82vw]",
           className,
         )}
       >
@@ -40,7 +40,8 @@ export function Modal({
             <X className="size-4" />
           </button>
         </div>
-        <div className="max-h-[calc(100vh-190px)] overflow-y-auto p-5 sm:p-7">{children}</div>
+        {/* Fixed height so switching tabs never resizes the dialog. */}
+        <div className="h-[calc(100dvh-250px)] min-h-[420px] overflow-y-auto overscroll-contain p-5 sm:p-7">{children}</div>
       </div>
     </div>
   );

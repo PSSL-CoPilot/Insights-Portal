@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, ChevronDown, Moon, Sun } from "lucide-react";
+import { Bell, ChevronDown, Moon, PanelLeft, Sun } from "lucide-react";
 import { useApp } from "../AppContext";
 import { AskAnything } from "../ai/AskAnything";
-import { NAV, BrandMark } from "./Sidebar";
+import { MORE, NAV, BrandMark } from "./Sidebar";
 import { monthLabel, stateSlug } from "@/lib/format";
 import { cn } from "../ui/primitives";
 
@@ -48,8 +48,8 @@ function ThemeToggle() {
 export function TopBar() {
   const path = usePathname();
   const router = useRouter();
-  const { model, month, setMonth, state, setState } = useApp();
-  const nav = NAV.find((n) => (n.href === "/" ? path === "/" : path.startsWith(n.href)));
+  const { model, month, setMonth, state, setState, toggleSidebar } = useApp();
+  const nav = [...NAV, ...MORE].find((n) => (n.href === "/" ? path === "/" : path.startsWith(n.href)));
   const title = path.startsWith("/settings") ? "Settings and Data Source" : nav?.title ?? "Command Center";
 
   // On the State Wise Plan, the state filter and the open state page are the same selection.
@@ -62,7 +62,11 @@ export function TopBar() {
     <header className="sticky top-0 z-30 border-b border-line/70 bg-canvas/85 backdrop-blur-md">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-3 sm:px-8 lg:h-[76px] lg:flex-nowrap lg:py-0">
         <div className="flex items-center gap-3 lg:min-w-[190px]">
-          <span className="lg:hidden"><BrandMark size={32} /></span>
+          <span className="lg:hidden"><BrandMark size={30} /></span>
+          <button onClick={toggleSidebar} aria-label="Toggle navigation" title="Collapse or expand the navigation"
+            className="hidden size-9 place-items-center rounded-xl text-mute transition-colors hover:bg-card hover:text-ink lg:grid">
+            <PanelLeft className="size-[18px]" />
+          </button>
           <h1 className="whitespace-nowrap text-[20px] font-semibold tracking-tight">{title}</h1>
         </div>
 

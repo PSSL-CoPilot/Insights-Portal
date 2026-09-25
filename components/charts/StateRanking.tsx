@@ -5,6 +5,7 @@ import { C } from "./shared";
 import { fmtInt, fmtPct, fmtPct0, fmtSignedPct } from "@/lib/format";
 import type { DataModel, MonthKey } from "@/lib/data/types";
 import { channelRows, findFocusChannel, findHotspot, stateRows, type KpiDef, type StateRow } from "@/lib/data/metrics";
+import { ArrowUpRight } from "lucide-react";
 import { Badge, cn } from "../ui/primitives";
 
 export type PlanKind = "state" | "channel";
@@ -30,7 +31,8 @@ export function StateRanking({
     return <div className="rounded-xl bg-subtle px-4 py-6 text-center text-sm text-mute">{def.label} is not available by {kind} for this month.</div>;
   }
   const bars: RankedRow[] = sorted.map(({ r, v }) => {
-    const isHot = focus === r.name;
+    // Growth measures (sales, installs) are never flagged as a problem focus.
+    const isHot = def.good !== "up" && focus === r.name;
     return {
       id: r.name,
       label: (
@@ -52,8 +54,8 @@ export function StateRanking({
 }
 
 export function StateTable({
-  model, month, selectedState, onSelect, kind = "state",
-}: { model: DataModel; month: MonthKey; selectedState?: string | null; onSelect?: (s: string) => void; kind?: PlanKind }) {
+  model, month, selectedState, onSelect, onDrill, kind = "state", highlightFocus = true,
+}: { model: DataModel; month: MonthKey; selectedState?: string | null; onSelect?: (s: string) => void; onDrill?: (s: string) => void; kind?: PlanKind; highlightFocus?: boolean }) {
   const { rows, focus } = planRows(model, month, kind);
   const sorted = [...rows].sort((a, b) => (b.cancels ?? 0) - (a.cancels ?? 0));
   return (
@@ -69,11 +71,12 @@ export function StateTable({
             <th className="pb-2 font-semibold">MoM growth</th>
             <th className="pb-2 font-semibold">Post ODD</th>
             <th className="pb-2 pr-3 font-semibold">Pending contact</th>
+            {onDrill && <th className="pb-2 pr-3" />}
           </tr>
         </thead>
         <tbody>
           {sorted.map((r) => {
-            const isHot = focus === r.name;
+            const isHot = highlightFocus && focus === r.name;
             return (
               <tr
                 key={r.name}
@@ -90,6 +93,14 @@ export function StateTable({
                 <td className={cn("num py-2.5 font-semibold", (r.cancelsMoM ?? 0) > 0.005 ? "text-bad" : (r.cancelsMoM ?? 0) < -0.005 ? "text-good" : "text-mute")}>{fmtSignedPct(r.cancelsMoM)}</td>
                 <td className="num py-2.5">{fmtPct0(r.postPct)}</td>
                 <td className="num py-2.5 pr-3">{fmtPct0(r.pendingPct)}</td>
+                {onDrill && (
+                  <td className="py-1.5 pr-2 text-right">
+                    <button onClick={(e) => { e.stopPropagation(); onDrill(r.name); }} title={`Open the ${r.name} plan`}
+                      className="inline-flex h-7 items-center gap-1 whitespace-nowrap rounded-full bg-panel px-2.5 text-[11.5px] font-semibold text-white transition-transform duration-200 hover:-translate-y-px">
+                      Plan <ArrowUpRight className="size-3" />
+                    </button>
+                  </td>
+                )}
               </tr>
             );
           })}

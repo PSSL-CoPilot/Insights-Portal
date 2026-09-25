@@ -18,7 +18,7 @@ export function CustomerMissDrivers({ model, month, state, showInsight = true }:
       label: (
         <span className="flex items-center gap-2">
           {r.label}
-          {hot && <Badge tone="bad" className="!px-1.5 !py-0 text-[9.5px] tracking-wider">HOTSPOT</Badge>}
+          {hot && <Badge tone="bad" className="!px-1.5 !py-0 text-[9.5px] tracking-wider">RISING</Badge>}
         </span>
       ),
       value: r.count,

@@ -329,7 +329,7 @@ export function StateDrilldown({ scope }: { scope: string }) {
             <div className="eyebrow mb-1">{channel ? "Channel plan" : "State plan"}</div>
             <div className="flex items-center gap-3">
               <h2 className="text-[38px] font-semibold uppercase leading-none tracking-tight">{name}</h2>
-              {isHot && <Badge tone="bad" className="animate-pulse-ring">FOCUS</Badge>}
+              {isHot && <Badge tone="bad">FOCUS</Badge>}
             </div>
             <div className="mt-2 text-[15px] text-mute">{monthLabel(month)}</div>
           </div>

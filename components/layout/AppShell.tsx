@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AlertTriangle, X } from "lucide-react";
 import { useApp } from "../AppContext";
 import { usePathname } from "next/navigation";
-import { NAV, Sidebar } from "./Sidebar";
+import { MORE, NAV, Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { GenieDock } from "../ai/GenieDock";
 import { KPIDetailModal } from "../kpi/KPIDetailModal";
@@ -32,7 +32,7 @@ function MobileNav() {
   const path = usePathname();
   return (
     <nav className="flex gap-1.5 overflow-x-auto border-b border-line bg-card px-4 py-2 lg:hidden" aria-label="Primary">
-      {NAV.map((n) => {
+      {[...NAV, ...MORE].map((n) => {
         const on = n.href === "/" ? path === "/" : path.startsWith(n.href);
         return (
           <Link key={n.href} href={n.href} className={cn("flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold", on ? "bg-panel text-white" : "bg-line-2 text-mute")}>
@@ -46,14 +46,15 @@ function MobileNav() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { sidebarCollapsed } = useApp();
+  const path = usePathname();
   return (
     <div className="min-h-screen">
       <Sidebar />
-      <div className={cn("min-h-screen transition-[padding] duration-300", sidebarCollapsed ? "lg:pl-[76px]" : "lg:pl-[252px]")}>
+      <div className={cn("min-h-screen transition-[padding] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]", sidebarCollapsed ? "lg:pl-[76px]" : "lg:pl-[244px]")}>
         <TopBar />
         <MobileNav />
         <DataBanner />
-        <main className="mx-auto w-full max-w-[1480px] px-5 pb-28 pt-6 sm:px-8">{children}</main>
+        <main key={path} className="page-enter w-full px-4 pb-28 pt-6 sm:px-6 2xl:px-8">{children}</main>
       </div>
       <KPIDetailModal />
       <GenieDock />

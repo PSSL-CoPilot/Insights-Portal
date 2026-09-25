@@ -509,7 +509,7 @@ export function buildModel(
   // which state does the hotspot block on "Dashboard KPI" describe? (its title row mentions it)
   if (kws) {
     for (const r of sheetGrid(kws)) {
-      const t = r.find((c) => typeof c === "string" && /hotspot/i.test(c)) as string | undefined;
+      const t = r.find((c) => typeof c === "string" && /hotspot|focus state/i.test(c)) as string | undefined;
       const st = t && states.find((x) => t.toLowerCase().includes(x.toLowerCase()));
       if (st) { model.hotspotState = st; break; }
     }

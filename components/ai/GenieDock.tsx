@@ -15,6 +15,22 @@ interface Msg {
   answer?: GenieAnswer;
 }
 
+const THINKING = ["Thinking…", "Reading the workbook…", "Crunching the numbers…", "Getting your answers ready…"];
+
+function Thinking() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((x) => (x + 1) % THINKING.length), 650);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="flex animate-fade items-center gap-3 rounded-2xl rounded-bl-md border border-line bg-card px-4 py-3 shadow-card">
+      <GenieMark size={26} className="genie-spin shrink-0" />
+      <span key={i} className="shimmer-text animate-fade text-[13px] font-semibold">{THINKING[i]}</span>
+    </div>
+  );
+}
+
 /** Floating assistant. Pass a different `provider` (e.g. LLM-backed) to replace the rule-based engine. */
 export function GenieDock({ provider = ruleBasedProvider }: { provider?: AnswerProvider }) {
   const { model, month, state, genieOpen, openGenie, closeGenie, genieSeed } = useApp();
@@ -30,7 +46,8 @@ export function GenieDock({ provider = ruleBasedProvider }: { provider?: AnswerP
     setMsgs((m) => [...m, { id: uid, role: "user", text: question }]);
     setBusy(true);
     try {
-      const answer = await provider.answer(question, { model, month, state });
+      // A short, deliberate pause so the answer reads as considered rather than instantaneous.
+      const [answer] = await Promise.all([provider.answer(question, { model, month, state }), new Promise((r) => setTimeout(r, 1500 + Math.random() * 1100))]);
       setMsgs((m) => [...m, { id: idRef.current++, role: "genie", answer }]);
     } catch (e) {
       setMsgs((m) => [...m, { id: idRef.current++, role: "genie", answer: { intent: "error", text: `I was unable to answer that (${e instanceof Error ? e.message : "unknown error"}).`, kpis: [] } }]);
@@ -74,7 +91,7 @@ export function GenieDock({ provider = ruleBasedProvider }: { provider?: AnswerP
         aria-hidden={!genieOpen}
       >
         <div className="flex items-center gap-3 border-b border-line bg-panel px-5 py-4 text-white">
-          <GenieMark size={38} />
+          <GenieMark size={38} className={cn(busy && "genie-spin")} />
           <div className="leading-tight">
             <div className="text-[15px] font-semibold">Insights Genie</div>
             <div className="text-[11px] text-white/60">Exact answers from your data, computed in the browser</div>
@@ -142,7 +159,7 @@ export function GenieDock({ provider = ruleBasedProvider }: { provider?: AnswerP
               </div>
             ),
           )}
-          {busy && <div className="text-xs text-mute">Working it out…</div>}
+          {busy && <Thinking />}
           <div ref={endRef} />
         </div>
 

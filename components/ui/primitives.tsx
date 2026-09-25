@@ -15,7 +15,7 @@ export function Card({ className, children, interactive, ...rest }: { className?
       {...rest}
       className={cn(
         "rounded-[18px] border border-line bg-card shadow-card",
-        interactive && "transition duration-200 hover:-translate-y-0.5 hover:border-line hover:shadow-pop cursor-pointer",
+        interactive && "transition-[transform,box-shadow,border-color] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-1 hover:border-line hover:shadow-pop cursor-pointer",
         className,
       )}
     >
@@ -130,7 +130,7 @@ export function Tabs<T extends string>({
           aria-selected={value === t.id}
           onClick={() => onChange(t.id)}
           className={cn(
-            "rounded-full font-semibold transition",
+            "rounded-full font-semibold transition-colors duration-200",
             size === "sm" ? "px-3 py-1 text-xs" : "px-4 py-1.5 text-[13px]",
             value === t.id ? "bg-panel text-white shadow-sm" : "text-mute hover:text-ink",
           )}

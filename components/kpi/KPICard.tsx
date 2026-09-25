@@ -47,7 +47,7 @@ export function KPICard({
       onClick={onClick}
       style={{ animationDelay: `${delay}ms` }}
       className={cn(
-        "group relative flex min-h-[158px] animate-rise flex-col justify-between overflow-hidden rounded-[18px] border p-4 text-left shadow-card transition duration-200 hover:-translate-y-0.5 hover:shadow-pop focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
+        "group relative flex min-h-[158px] animate-rise flex-col justify-between overflow-hidden rounded-[18px] border p-4 text-left shadow-card transition-[transform,box-shadow,border-color] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-1 hover:shadow-pop focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
         spotlight ? "border-panel bg-panel text-white" : a.status === "critical" ? "border-bad/40 bg-card" : "border-line bg-card hover:border-soft",
         selected && "ring-2 ring-brand",
         unavailable && "opacity-70",

@@ -277,7 +277,7 @@ function CustomerMissView() {
                   <tr key={r.key} className={cn("border-t border-line-2 text-right", hot && "bg-bad-soft")}>
                     <td className="py-2.5 text-left text-mute">{i + 1}</td>
                     <td className="py-2.5 text-left font-semibold">
-                      {r.label} {hot && <Badge tone="bad" className="ml-1 !px-1.5 !py-0 text-[9.5px]">HOTSPOT</Badge>}
+                      {r.label} {hot && <Badge tone="bad" className="ml-1 !px-1.5 !py-0 text-[9.5px]">RISING</Badge>}
                     </td>
                     <td className="num py-2.5 font-semibold">{fmtInt(r.count)}</td>
                     <td className="num py-2.5">{fmtPct0(r.share)}</td>
