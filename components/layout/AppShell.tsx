@@ -33,7 +33,7 @@ function MobileNav() {
   return (
     <nav className="flex gap-1.5 overflow-x-auto border-b border-line bg-card px-4 py-2 lg:hidden" aria-label="Primary">
       {[...NAV, ...MORE].map((n) => {
-        const on = n.href === "/" ? path === "/" : path.startsWith(n.href);
+        const on = n.href === "/" ? path === "/" : path.startsWith(n.href) || (!!n.also && path.startsWith(n.also));
         return (
           <Link key={n.href} href={n.href} className={cn("flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold", on ? "bg-panel text-white" : "bg-line-2 text-mute")}>
             <n.icon className="size-3.5" /> {n.label}

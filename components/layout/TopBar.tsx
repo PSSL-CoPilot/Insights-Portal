@@ -49,7 +49,7 @@ export function TopBar() {
   const path = usePathname();
   const router = useRouter();
   const { model, month, setMonth, state, setState, toggleSidebar } = useApp();
-  const nav = [...NAV, ...MORE].find((n) => (n.href === "/" ? path === "/" : path.startsWith(n.href)));
+  const nav = [...NAV, ...MORE].find((n) => (n.href === "/" ? path === "/" : path.startsWith(n.href) || (!!n.also && path.startsWith(n.also))));
   const title = path.startsWith("/settings") ? "Settings and Data Source" : nav?.title ?? "Command Center";
 
   // On the State Wise Plan, the state filter and the open state page are the same selection.

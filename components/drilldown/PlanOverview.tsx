@@ -18,10 +18,14 @@ const METRICS = [
   { id: "pending", label: "Pending contact %" },
 ] as const;
 
-/** State Wise Plan and Channel Wise Plan landing page: ranked cards, comparison, detail table and the state × channel view. */
-export function PlanOverview({ kind }: { kind: PlanKind }) {
+/**
+ * State and Channel Plan: one page that tells where the problem sits (focus state, then focus channel),
+ * shows where they intersect, and lets the reader switch the ranking between states and channels.
+ */
+export function PlanOverview({ kind: initialKind }: { kind: PlanKind }) {
   const { model, month, state: filterState, setState } = useApp();
   const router = useRouter();
+  const [kind, setKind] = useState<PlanKind>(initialKind);
   const [metric, setMetric] = useState<(typeof METRICS)[number]["id"]>("cancels");
   const { rows, focus } = planRows(model, month, kind);
   const sorted = [...rows].sort((a, b) => (b.cancelsMoM ?? -1) - (a.cancelsMoM ?? -1));
@@ -31,28 +35,54 @@ export function PlanOverview({ kind }: { kind: PlanKind }) {
     if (kind === "state") setState(name);
     router.push(`/${base}/${stateSlug(name)}?month=${month}`);
   };
-  const f = rows.find((r) => r.name === focus);
+  const open = (k: PlanKind, name: string) => {
+    if (k === "state") setState(name);
+    router.push(`/${k === "state" ? "states" : "channels"}/${stateSlug(name)}?month=${month}`);
+  };
+  const fs = d.hotspot && (d.hotspot.cancelsMoM ?? 0) > 0.15 ? d.hotspot : null;
+  const fc = d.focusChannel && (d.focusChannel.contribution ?? 0) > 0.25 ? d.focusChannel : null;
+  const focusCards: { kind: PlanKind; name: string | null; row: typeof fs | typeof fc }[] = [
+    { kind: "state", name: fs?.state ?? null, row: fs },
+    { kind: "channel", name: fc?.channel ?? null, row: fc },
+  ];
   const noun = kind === "state" ? "state" : "channel";
 
   return (
     <div className="space-y-8">
       <SectionTitle
-        eyebrow={`${kind === "state" ? "State Wise Plan" : "Channel Wise Plan"} · ${monthLabel(month)}`}
-        title={kind === "state" ? "Which markets need a plan?" : "Which sales channels need a plan?"}
-        sub={`Ranked by cancellation growth. Open a ${noun} to review what changed, when, who, why, and the recommended actions.`}
+        eyebrow={`State and Channel Plan · ${monthLabel(month)}`}
+        title="Where do we need a plan?"
+        sub="Start with the focus market, then the focus channel within it, then open a plan to review what changed, when, who, why and whether it could have been seen coming."
       />
 
-      <Card className="flex flex-wrap items-center gap-5 border-brand/50 bg-brand-soft p-5">
-        <span className="bs-gradient grid size-11 shrink-0 place-items-center rounded-2xl text-[#111]"><Crosshair className="size-5" /></span>
-        <p className="min-w-[260px] flex-1 text-[14.5px] leading-relaxed text-ink-2">
-          {f ? (
-            <RichText text={`**${f.name}** is the focus ${noun} for ${monthName(month)}: cancellations ${fmtSignedPct(f.cancelsMoM)}, **${fmtPct0(f.contribution)}** of the portfolio increase, with a ${fmtPct(f.cancelRate)} cancel rate. ${kind === "state" && d.focusChannel ? `Within it, **${d.focusChannel.channel}** is the channel to prioritise.` : kind === "channel" && d.hotspot ? `The increase is concentrated in **${d.hotspot.state}**.` : ""}`} />
-          ) : (
-            `Every ${noun} is within its normal range in ${monthName(month)}; no focus ${noun} is required.`
-          )}
-        </p>
-        {f && <button onClick={() => go(f.name)} className="inline-flex h-10 items-center gap-2 rounded-full bg-panel px-4 text-[13px] font-semibold text-white transition hover:bg-panel-2">Open {f.name} plan <ArrowUpRight className="size-4" /></button>}
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {focusCards.map((x, i) => (
+          <Card key={x.kind} className="flex items-center gap-4 border-brand/50 bg-brand-soft p-5">
+            <span className="bs-gradient grid size-11 shrink-0 place-items-center rounded-2xl text-[15px] font-bold text-[#111]">{i + 1}</span>
+            <div className="min-w-0 flex-1">
+              <div className="eyebrow">Focus {x.kind}</div>
+              <p className="mt-0.5 text-[14px] leading-relaxed text-ink-2">
+                {x.row ? <RichText text={`**${x.name}**: cancellations ${fmtSignedPct(x.row.cancelsMoM)}, **${fmtPct0(x.row.contribution)}** of the increase, ${fmtPct(x.row.cancelRate)} cancel rate.`} /> : `Every ${x.kind} is within its normal range in ${monthName(month)}.`}
+              </p>
+            </div>
+            {x.row && (
+              <button onClick={() => open(x.kind, x.name!)} className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-panel px-4 text-[13px] font-semibold text-white transition-transform duration-300 hover:-translate-y-0.5">
+                Open plan <ArrowUpRight className="size-4" />
+              </button>
+            )}
+          </Card>
+        ))}
+      </div>
+
+      <StateChannelMatrix onState={(s) => open("state", s)} onChannel={(c) => open("channel", c)} />
+
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 className="text-[18px] font-semibold tracking-tight">All {noun}s, ranked by cancellation growth</h3>
+          <p className="text-sm text-mute">Select any {noun} to open its plan.</p>
+        </div>
+        <Tabs tabs={[{ id: "state", label: "By state" }, { id: "channel", label: "By channel" }]} value={kind} onChange={(v) => setKind(v as PlanKind)} />
+      </div>
 
       <div className={cn("grid gap-4 sm:grid-cols-2", kind === "state" ? "xl:grid-cols-3" : "xl:grid-cols-4")}>
         {sorted.map((r, i) => {
@@ -99,8 +129,6 @@ export function PlanOverview({ kind }: { kind: PlanKind }) {
         </div>
         <StateTable model={model} month={month} selectedState={kind === "state" ? filterState : null} onSelect={go} kind={kind} />
       </Card>
-
-      <StateChannelMatrix onState={(s) => { setState(s); router.push(`/states/${stateSlug(s)}?month=${month}`); }} onChannel={(c) => router.push(`/channels/${stateSlug(c)}?month=${month}`)} />
     </div>
   );
 }

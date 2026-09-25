@@ -27,18 +27,18 @@ export function ExecutiveSummary() {
     <section aria-labelledby="exec-summary">
       <Card className="relative overflow-hidden">
         <div className="bs-gradient pointer-events-none absolute -right-24 -top-24 size-72 rounded-full opacity-20 blur-3xl" />
-        <div className="relative grid gap-0 lg:grid-cols-[1.7fr_1fr]">
-          <div className="p-6 sm:p-9">
+        <div className="relative grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(340px,30%)]">
+          <div className="p-6 sm:p-8 xl:px-10">
             <div className="flex flex-wrap items-center gap-2.5">
               <GenieMark size={28} />
               <span className="eyebrow">Executive summary</span>
               <Badge>{monthLabel(month)}</Badge>
               {d.anomaly ? <Badge tone="bad">Exception detected</Badge> : d.prev ? <Badge tone="good">In line with trend</Badge> : null}
             </div>
-            <h2 id="exec-summary" className="mt-4 max-w-2xl text-[30px] font-semibold leading-[1.15] tracking-tight sm:text-[34px]">
+            <h2 id="exec-summary" className="mt-4 text-[30px] font-semibold leading-[1.15] tracking-[-0.025em] sm:text-[36px]">
               {sum.headline}
             </h2>
-            <div className="mt-5 max-w-3xl space-y-3.5 text-[15.5px] leading-[1.65] text-ink-2">
+            <div className="mt-5 gap-10 text-[15.5px] leading-[1.65] text-ink-2 2xl:columns-2 [&>p]:mb-3.5 [&>p]:break-inside-avoid">
               {sum.paragraphs.map((p, i) => (
                 <p key={`${month}-${i}`} className="animate-rise" style={{ animationDelay: `${120 + i * 110}ms` }}>
                   <RichText text={p} />

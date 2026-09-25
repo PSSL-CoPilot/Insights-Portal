@@ -12,12 +12,11 @@ import { WatchtowerSignals } from "../charts/WatchtowerSignals";
 import { ODD_COLORS } from "../charts/ODDTimingChart";
 import { C, TipCard, axisProps } from "../charts/shared";
 import { RankedBars } from "../charts/RankedBars";
-import { ActionCard, useActionStore } from "../insights/ActionCard";
 import { StateChannelMatrix } from "./PlanOverview";
 import { Sparkline } from "../ui/Sparkline";
 import { Badge, Button, Card, cn, dirTone } from "../ui/primitives";
 import { assess, findFocusChannel, findHotspot, getSnapshot, isChannel, kpiById, prevMonth, scopeName, series } from "@/lib/data/metrics";
-import { buildActions, stateStory, type StoryPoint } from "@/lib/data/narratives";
+import { stateStory, type StoryPoint } from "@/lib/data/narratives";
 import { fmtCompact, fmtInt, fmtPct, fmtPct0, fmtPp, fmtSignedPct, monthLabel, monthName, monthShort, stateSlug } from "@/lib/format";
 
 const KPI_STRIP = ["sales", "installs", "cancels", "cancelRate", "post", "cust", "pending", "onTime"] as const;
@@ -71,7 +70,6 @@ export function StateDrilldown({ scope }: { scope: string }) {
   const [unlocked, setUnlocked] = useState(1);
   const [showAll, setShowAll] = useState(false);
   const refs = useRef<(HTMLDivElement | null)[]>([]);
-  const [store, update] = useActionStore();
   const base = channel ? "channels" : "states";
 
   useEffect(() => {
@@ -101,7 +99,6 @@ export function StateDrilldown({ scope }: { scope: string }) {
 
   // State × channel mix for this plan (published for the drill month).
   const mix = model.stateChannel.filter((r) => (channel ? r.channel === name : r.state === name));
-  const actions = buildActions(model, month).filter((a) => a.market === "All markets" || a.market.includes(name));
 
   const steps: StepDef[] = [
     {
@@ -291,22 +288,10 @@ export function StateDrilldown({ scope }: { scope: string }) {
             </Card>
           </div>
           <Insight point={story.seen} />
-        </>
-      ),
-    },
-    {
-      id: "do",
-      title: "What should we do?",
-      question: "Recommended actions",
-      render: () => (
-        <>
-          <div className="grid gap-5 xl:grid-cols-2">
-            {actions.slice(0, 4).map((a, i) => (
-              <ActionCard key={a.id} action={a} month={month} index={i} record={store[a.id]} onUpdate={(p) => update(a.id, p)} />
-            ))}
-          </div>
-          <div className="mt-4 flex justify-end">
-            <Link href={`/actions?month=${month}`} className="inline-flex items-center gap-1.5 text-[13px] font-semibold underline decoration-dotted underline-offset-4">All actions <ArrowRight className="size-3.5" /></Link>
+          <div className="mt-6 flex justify-center">
+            <Link href={`/watchtower?month=${month}${channel ? "" : `&state=${stateSlug(name)}`}`} className="bs-gradient group inline-flex h-12 items-center gap-2 rounded-full px-6 text-[15px] font-semibold text-[#111] shadow-pop transition-transform duration-300 hover:-translate-y-0.5">
+              Explore in Watchtower <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
           </div>
         </>
       ),
@@ -323,7 +308,7 @@ export function StateDrilldown({ scope }: { scope: string }) {
   return (
     <div className="space-y-8">
       <div>
-        <Link href={`/${base}?month=${month}`} className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-mute transition hover:text-ink"><ArrowLeft className="size-3.5" /> {channel ? "Channel Wise Plan" : "State Wise Plan"}</Link>
+        <Link href={`/${base}?month=${month}`} className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-mute transition hover:text-ink"><ArrowLeft className="size-3.5" /> State and Channel Plan</Link>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="eyebrow mb-1">{channel ? "Channel plan" : "State plan"}</div>

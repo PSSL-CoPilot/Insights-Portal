@@ -3,19 +3,18 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, ChevronDown, ChevronsLeft, ChevronsRight, CircleSlash, Database, Ellipsis, LayoutDashboard, ListChecks, MapPin, Network, Route } from "lucide-react";
+import { Activity, ChevronDown, ChevronsLeft, ChevronsRight, CircleSlash, Database, Ellipsis, LayoutDashboard, ListChecks, MapPin, Route } from "lucide-react";
 import type { ComponentType } from "react";
 import { InsightsGlyph } from "../ui/Marks";
 import { useApp } from "../AppContext";
 import { cn } from "../ui/primitives";
 
-type NavItem = { href: string; label: string; icon: ComponentType<{ className?: string; strokeWidth?: number }>; title: string };
+type NavItem = { href: string; label: string; icon: ComponentType<{ className?: string; strokeWidth?: number }>; title: string; also?: string };
 
 export const NAV: NavItem[] = [
   { href: "/", label: "Command Center", icon: LayoutDashboard, title: "Command Center" },
   { href: "/cancellations", label: "Cancellations", icon: CircleSlash, title: "Cancellations" },
-  { href: "/states", label: "State Wise Plan", icon: MapPin, title: "State Wise Plan" },
-  { href: "/channels", label: "Channel Wise Plan", icon: Network, title: "Channel Wise Plan" },
+  { href: "/states", label: "State and Channel Plan", icon: MapPin, title: "State and Channel Plan", also: "/channels" },
   { href: "/insights", label: "Insights", icon: InsightsGlyph, title: "Insights" },
   { href: "/watchtower", label: "Watchtower", icon: Activity, title: "Watchtower" },
   { href: "/actions", label: "Actions", icon: ListChecks, title: "Actions" },
@@ -93,7 +92,7 @@ export function Sidebar() {
       </div>
 
       <nav className="mt-2 flex flex-1 flex-col gap-1 overflow-y-auto px-3">
-        {NAV.map((n) => <NavLink key={n.href} n={n} on={active(n.href)} c={c} />)}
+        {NAV.map((n) => <NavLink key={n.href} n={n} on={active(n.href) || (!!n.also && active(n.also))} c={c} />)}
         <button
           onClick={() => setMore((v) => !v)}
           aria-expanded={more}

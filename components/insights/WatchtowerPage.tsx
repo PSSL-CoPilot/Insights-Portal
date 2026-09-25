@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { ArrowRight, ChevronRight, Radar } from "lucide-react";
 import { useApp } from "../AppContext";
 import { Badge, Card, cn, LinkButton, SectionTitle } from "../ui/primitives";
@@ -120,6 +121,16 @@ export function WatchtowerPage() {
 
       {/* 3 · story */}
       {storyState && <SignalStory storyState={storyState} onChange={(s) => setState(s)} />}
+
+      <Card className="flex flex-wrap items-center justify-between gap-4 bg-panel p-6 text-white">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/50">From signal to action</div>
+          <div className="mt-1 text-[18px] font-semibold">The warning was visible. The next step is to act on it.</div>
+        </div>
+        <Link href={`/actions?month=${month}`} className="bs-gradient group inline-flex h-12 items-center gap-2 rounded-full px-6 text-[15px] font-semibold text-[#111] transition-transform duration-300 hover:-translate-y-0.5">
+          What should we do next? <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+        </Link>
+      </Card>
 
       {/* 4 · by state */}
       <Card className="overflow-hidden">

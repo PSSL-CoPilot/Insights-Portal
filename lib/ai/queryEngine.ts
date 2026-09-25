@@ -203,7 +203,7 @@ function dataAnswer(question: string, ctx: GenieContext): GenieAnswer | null {
         rows.map((r, i) => `${i + 1}. **${r.name}**: ${fmtV(m, r.v)}${total ? ` (${fmtPct0((r.v ?? 0) / total)} of total)` : ""}${fmtD(m, r.pv, r.v) ? `, ${fmtD(m, r.pv, r.v)} month over month` : ""}`).join("\n") +
         (total ? `\n\nTotal: **${fmtInt(total)}**.` : ""),
       kpis: rows.slice(0, 4).map((r) => kp(r.name, fmtV(m, r.v), fmtD(m, r.pv, r.v), toneD(m, r.pv, r.v))),
-      cta: dimChannel ? { label: "Open Channel Wise Plan", href: `/channels?${q2}` } : { label: "Open State Wise Plan", href: `/states?${q2}` },
+      cta: { label: "Open State and Channel Plan", href: `/${dimChannel ? "channels" : "states"}?${q2}` },
       followUps: [`Which ${dimChannel ? "channel" : "state"} has the highest cancel rate?`],
     };
   }

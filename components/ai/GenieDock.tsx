@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Send, X } from "lucide-react";
+import { ArrowRight, RotateCcw, Send, X } from "lucide-react";
 import { GenieMark } from "../ui/Marks";
 import { useApp } from "../AppContext";
 import { ruleBasedProvider, suggestedQuestions, type AnswerProvider, type GenieAnswer } from "@/lib/ai/queryEngine";
@@ -96,7 +96,12 @@ export function GenieDock({ provider = ruleBasedProvider }: { provider?: AnswerP
             <div className="text-[15px] font-semibold">Insights Genie</div>
             <div className="text-[11px] text-white/60">Exact answers from your data, computed in the browser</div>
           </div>
-          <button onClick={closeGenie} className="ml-auto grid size-8 place-items-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white" aria-label="Close">
+          {msgs.length > 0 && (
+            <button onClick={() => setMsgs([])} disabled={busy} className="ml-auto flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40" aria-label="Clear chat">
+              <RotateCcw className="size-3.5" /> Clear chat
+            </button>
+          )}
+          <button onClick={closeGenie} className={cn(msgs.length ? "" : "ml-auto", "grid size-8 place-items-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white")} aria-label="Close">
             <X className="size-4" />
           </button>
         </div>
