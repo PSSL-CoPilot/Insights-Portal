@@ -446,3 +446,6 @@ export function describeTrend(model: DataModel, def: KpiDef, month: MonthKey, st
   }
   return `${scope} ${name} has moved within ${band(lo, hi)} since ${mname(first)}; ${mname(month)} came in at ${fmt(a.delta.current)} (${chg} month over month), which is within normal monthly variation.`;
 }
+
+/** An agency counts as deteriorating when its cancel rate runs this far above its own history. */
+export const AGENCY_GAP_THRESHOLD = 0.05;

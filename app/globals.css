@@ -32,6 +32,11 @@
   --color-good-soft: #e3f6ea;
   --color-warn: #c97a00;
   --color-warn-soft: #fff3da;
+  /* Story modes: observed / actual (navy, neutral) and forward-looking / preventive (restrained teal). */
+  --color-observed: #1f2a44;
+  --color-observed-soft: #eef0f5;
+  --color-teal: #0f7c80;
+  --color-teal-soft: #e3f3f2;
 
   --shadow-card: 0 1px 2px rgba(17, 17, 17, 0.04), 0 10px 30px -18px rgba(17, 17, 17, 0.12);
   --shadow-pop: 0 2px 6px rgba(17, 17, 17, 0.06), 0 24px 60px -16px rgba(17, 17, 17, 0.28);
@@ -67,6 +72,10 @@
   --color-good-soft: #0f2c1c;
   --color-warn: #fdb022;
   --color-warn-soft: #36270a;
+  --color-observed: #c3cbe0;
+  --color-observed-soft: #22262f;
+  --color-teal: #4fc7c0;
+  --color-teal-soft: #11302f;
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -18px rgba(0, 0, 0, 0.6);
   --shadow-pop: 0 2px 6px rgba(0, 0, 0, 0.4), 0 24px 60px -16px rgba(0, 0, 0, 0.8);
 }

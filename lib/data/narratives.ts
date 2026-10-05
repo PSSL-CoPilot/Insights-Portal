@@ -5,7 +5,7 @@
  */
 import type { DataModel, MonthKey } from "./types";
 import {
-  assess, findFocusChannel, findHotspot, getSnapshot, isChannel, kpiById, kpiDelta, nk, prevMonth, reasonStats, scopeName, stateRows, excessCancels,
+  AGENCY_GAP_THRESHOLD, assess, findFocusChannel, findHotspot, getSnapshot, isChannel, kpiById, kpiDelta, nk, prevMonth, reasonStats, scopeName, stateRows, excessCancels,
   type ChannelRow, type StateRow, REASON_LABELS,
 } from "./metrics";
 import { fmtInt, fmtPct, fmtPct0, fmtPp, fmtSignedPct, monthLabel, monthName, monthShort, stateSlug } from "../format";
@@ -89,89 +89,8 @@ export function diagnose(model: DataModel, month: MonthKey): Diagnosis {
   };
 }
 
-// ------------------------------------------------------------------ executive summary
-export interface ExecSummary {
-  headline: string;
-  /** Paragraphs; `**bold**` marks data-derived figures to emphasise. */
-  paragraphs: string[];
-  rootCause: RootCause;
-  chips: { label: string; value: string; tone: "bad" | "good" | "neutral" }[];
-}
-
 const shortReason = (l: string) => (nk(l) === nk(REASON_LABELS.resched) ? "Customer Reschedules" : l);
 const abs = (s: string) => s.replace(/^[+−]/, "");
-
-export function executiveSummary(model: DataModel, month: MonthKey): ExecSummary {
-  const d = diagnose(model, month);
-  const M = monthName(month);
-  const paras: string[] = [];
-  const chips: ExecSummary["chips"] = [];
-
-  if (!d.prev || d.cancelsMoM === null) {
-    return {
-      headline: `${M}: baseline month`,
-      paragraphs: [`${M} is the first month in the dataset, so a month over month comparison is not available. Please select a later month to review performance movement.`],
-      rootCause: "insufficient", chips,
-    };
-  }
-
-  const cm = fmtSignedPct(d.cancelsMoM);
-  const sm = fmtSignedPct(d.salesMoM);
-  if (d.anomaly) {
-    let p1 = `**${M} cancellations increased ${abs(cm)}** while Unique Sales ${(d.salesMoM ?? 0) >= 0 ? "grew" : "declined"} **${abs(sm)}**; the movement is therefore **not explained by demand volume**.`;
-    p1 += ` The cancel rate rose to **${fmtPct(d.cancelRate)}** from ${fmtPct(d.prevCancelRate)}`;
-    if (d.installsMoM !== null) p1 += d.installsMoM < 0 ? `, and installs declined ${abs(fmtSignedPct(d.installsMoM))}` : `, while installs grew a more modest ${abs(fmtSignedPct(d.installsMoM))}`;
-    paras.push(p1 + ".");
-
-    if (d.hotspot && d.hotspot.cancelsMoM !== null) {
-      const h = d.hotspot;
-      paras.push(
-        `**${h.state}** is the principal source of the increase: cancellations ${fmtSignedPct(h.cancelsMoM)}, contributing **${fmtPct0(h.contribution)}** of the portfolio change, with ${fmtPct0(h.postPct)} of its cancellations occurring after the Original Due Date` +
-          `${h.pendingPct !== null ? ` and ${fmtPct0(h.pendingPct)} carrying Pending Customer Contact` : ""}. ` +
-          `${d.runnerUpGrowth !== null ? `The remaining states stayed within their normal range (next highest ${fmtSignedPct(d.runnerUpGrowth)}).` : ""}`,
-      );
-    }
-
-    if (d.focusChannel && (d.focusChannel.contribution ?? 0) > 0.25) {
-      const c = d.focusChannel;
-      paras.push(`By channel, **${c.channel}** is the focus: cancellations ${fmtSignedPct(c.cancelsMoM)} at a ${fmtPct(c.cancelRate)} cancel rate, representing **${fmtPct0(c.contribution)}** of the increase.`);
-    }
-
-    if (d.postPct !== null && d.prevPostPct !== null && d.postPct - d.prevPostPct > 0.03) {
-      const drivers = d.lateDrivers.map((x) => `${shortReason(x.label)} (${fmtSignedPct(x.mom)})`);
-      paras.push(
-        `The cancellation mix moved toward **Post ODD**, now **${fmtPct0(d.postPct)}** of cancellations (from ${fmtPct0(d.prevPostPct)})` +
-          (drivers.length ? `, led by ${drivers.join(", ")}` : "") + ".",
-      );
-    }
-
-    if (d.rootCause === "customer-readiness") {
-      paras.push(
-        `Taken together, the evidence points to a **customer engagement and appointment readiness issue** rather than network readiness` +
-          (d.bswPct !== null ? ` (BSW Delay Predicted ${fmtPct0(d.bswPct)}${d.jeopardyPct !== null ? `, Install in Jeopardy ${fmtPct0(d.jeopardyPct)}` : ""}).` : "."),
-      );
-    } else if (d.rootCause === "operational") {
-      paras.push(`Company side and network readiness signals are rising, indicating an **operational readiness issue** rather than customer behaviour alone.`);
-    } else {
-      paras.push(`Customer side and operational signals both moved; the root cause is **mixed**, and the timing and reason views separate the two.`);
-    }
-  } else {
-    paras.push(
-      `**${M} performance is in line with trend.** Cancellations moved ${cm} against ${sm} sales growth, with a cancel rate of ${fmtPct(d.cancelRate)} (${fmtPct(d.prevCancelRate)} prior), which is within normal monthly variation.`,
-    );
-    if (d.postPct !== null) paras.push(`Post ODD accounts for ${fmtPct0(d.postPct)} of cancellations and ${d.dominantClass?.label ?? "Customer Miss"} remains the dominant classification. No material exception is present.`);
-  }
-
-  chips.push({ label: "Cancellations", value: cm, tone: (d.cancelsMoM ?? 0) > 0 ? "bad" : "good" });
-  chips.push({ label: "Unique Sales", value: sm, tone: (d.salesMoM ?? 0) >= 0 ? "good" : "bad" });
-
-  return {
-    headline: d.anomaly ? `${M}: cancellations ${cm}, sales ${sm}` : `${M}: performance in line with trend`,
-    paragraphs: paras,
-    rootCause: d.rootCause,
-    chips,
-  };
-}
 
 // ------------------------------------------------------------------ focus insight (Cancellations page)
 export type FocusKind = "timing" | "miss" | "class";
@@ -390,6 +309,8 @@ export interface ActionItem {
   measures: string[];
   href: string;
   hrefLabel: string;
+  /** Potential saves from the prevention plan for this layer, when the workbook provides it. */
+  saves?: number | null;
 }
 
 /** Task owner mailboxes. Edit here to route initiated actions to the right teams. */
@@ -400,6 +321,8 @@ export const OWNER_EMAILS: Record<string, string> = {
   "Field Operations": "field.operations@brightspeed.com",
   "Insights and BI": "insights.bi@brightspeed.com",
   "Network Operations": "network.operations@brightspeed.com",
+  "Sales Quality Assurance": "sales.quality@brightspeed.com",
+  "Installation Planning": "installation.planning@brightspeed.com",
 };
 
 export function buildActions(model: DataModel, month: MonthKey): ActionItem[] {
@@ -490,7 +413,93 @@ export function buildActions(model: DataModel, month: MonthKey): ActionItem[] {
       href: `/watchtower?${q}`, hrefLabel: "Open Watchtower",
     },
   ];
-  return list;
+  return withPreventionPlan(model, month, list, d);
+}
+
+/**
+ * When the workbook carries the agency and prevention sheets for this month's focus state, the
+ * action list follows the prevention plan: sales quality verification replaces the generic channel
+ * action, installation readiness replaces the broad network watch, and the confirmation outreach
+ * becomes the customer-contact rescue. Saves come straight from the plan.
+ */
+function withPreventionPlan(model: DataModel, month: MonthKey, list: ActionItem[], d: Diagnosis): ActionItem[] {
+  const st = model.story;
+  const hot = d.hotspot;
+  if (!d.anomaly || !hot || st.focusState !== hot.state || st.month !== month || !st.interventions.length) return list;
+  const iv = (k: string) => st.interventions.find((x) => x.kind === k);
+  const q = `month=${month}`;
+  const own = (o: string) => ({ owner: o, ownerEmail: OWNER_EMAILS[o] ?? "" });
+  const out = [...list];
+
+  const contact = iv("contact");
+  const confirm = out.find((a) => a.id === "confirm");
+  if (contact && confirm) {
+    const pop = st.contactRisk[0];
+    const driver = st.drivers.find((x) => x.kind === "contact");
+    Object.assign(confirm, {
+      title: "Customer Contact Rescue",
+      saves: contact.saves,
+      population: pop?.value ?? confirm.population,
+      populationLabel: pop?.label ?? confirm.populationLabel,
+      impact: `${contact.action}. Potential saves: about ${fmtInt(contact.saves)} orders.`,
+      evidence: [
+        ...(driver ? [`Customer contact and appointment readiness is the primary cause of ${fmtInt(driver.cancels)} ${hot.state} cancellations (${fmtPct0(driver.share)})`] : []),
+        ...(st.contactRisk[1] ? [`${st.contactRisk[1].label}: ${fmtInt(st.contactRisk[1].value)}`] : []),
+        ...confirm.evidence,
+      ],
+      request: st.contactRules.length
+        ? `Apply cause-specific rules to every at-risk order: ${st.contactRules.map((r) => `${r.label.toLowerCase()}: ${r.value.toLowerCase()}`).join("; ")}.`
+        : confirm.request,
+    });
+  }
+
+  const sales = iv("sales");
+  const weak = st.agencies.filter((a) => (a.gap ?? 0) >= AGENCY_GAP_THRESHOLD).sort((a, b) => (b.gap ?? 0) - (a.gap ?? 0));
+  if (sales && weak.length) {
+    const channels = [...new Set(weak.map((a) => a.channel))];
+    const driver = st.drivers.find((x) => x.kind === "sales");
+    const critical = st.cohorts.filter((c) => /critical/i.test(c.band) && weak.some((a) => a.agency === c.agency));
+    const item: ActionItem = {
+      id: "sales-quality", title: "Sales Quality Verification", ...own("Sales Quality Assurance"), priority: "Critical",
+      market: `${hot.state}, ${channels.join(" and ")}`,
+      population: weak.reduce((a, x) => a + (x.sales ?? 0), 0), populationLabel: `${monthShort(month)} sales through agencies running above their own history`,
+      impact: `${sales.action}. Potential saves: about ${fmtInt(sales.saves)} orders.`,
+      why: `${weak.map((a) => a.agency).join(", ")} run ${fmtPp(Math.min(...weak.map((a) => a.gap ?? 0)))} to ${fmtPp(Math.max(...weak.map((a) => a.gap ?? 0)))} above their own history${driver ? `; sales and agency quality is the primary cause of ${fmtInt(driver.cancels)} cancellations (${fmtPct0(driver.share)})` : ""}.`,
+      evidence: [
+        ...weak.map((a) => `${a.agency} (${a.channel}): ${fmtPct(a.baseline)} history to ${fmtPct(a.cancelRate)} in ${monthShort(month)}${a.pattern ? `; ${a.pattern.toLowerCase()}` : ""}`),
+        ...critical.slice(0, 2).map((c) => `${c.agency} ${c.cohort.toLowerCase()}: ${fmtPct0(c.salesShare)} of sales, ${fmtPct0(c.cancelShare)} of cancellations`),
+      ],
+      request: "Independently verify orders that score high on low intent, promotion dependence, competitor mention or failed confirmation before installation is scheduled, and coach or pause Critical representatives.",
+      measures: ["Critical representative share", ...channels.map((c) => `${hot.state} ${c} cancel rate`), "Share of risky orders verified before installation"],
+      href: `/channels/${stateSlug(channels[0])}?${q}`, hrefLabel: `Open ${channels[0]} plan`, saves: sales.saves,
+    };
+    const i = out.findIndex((a) => a.id === "channel");
+    if (i >= 0) out.splice(i, 1, item);
+    else out.splice(1, 0, item);
+  }
+
+  const install = iv("install");
+  const segs = st.segments.filter((s) => !s.isTotal);
+  if (install && segs.length) {
+    const total = st.segments.find((s) => s.isTotal)?.orders ?? segs.reduce((a, s) => a + (s.orders ?? 0), 0);
+    const item: ActionItem = {
+      id: "install", title: "Installation Readiness Segmentation", ...own("Installation Planning"), priority: "High", market: hot.state,
+      population: total, populationLabel: `${hot.state} delivery-risk orders`,
+      impact: `${install.action}. Potential saves: about ${fmtInt(install.saves)} orders.`,
+      why: "Treating every at-risk installation the same wastes effort; each segment needs a different response.",
+      evidence: segs.map((s) => `${s.segment}: ${fmtInt(s.orders)} orders (${s.signal.toLowerCase()})`),
+      request: segs.map((s) => `${s.segment}: ${s.action.toLowerCase()}`).join("; ") + ".",
+      measures: ["ODD miss rate on delivery-risk orders", "Post ODD cancellation share", "Ready jobs accelerated"],
+      href: `/watchtower?${q}&state=${stateSlug(hot.state)}`, hrefLabel: "Open Watchtower", saves: install.saves,
+    };
+    const i = out.findIndex((a) => a.id === "netwatch");
+    if (i >= 0) out.splice(i, 1);
+    out.splice(Math.min(2, out.length), 0, item);
+  }
+  // The three prevention layers lead, in plan order; supporting actions follow.
+  const lead = ["confirm", "sales-quality", "install"];
+  const rank = (id: string) => (lead.includes(id) ? lead.indexOf(id) : lead.length);
+  return out.map((a, i) => ({ a, i })).sort((x, y) => rank(x.a.id) - rank(y.a.id) || x.i - y.i).map((x) => x.a);
 }
 
 /** Email the task owner receives when an action is initiated. */

@@ -9,7 +9,8 @@ import type { DataModel, MonthKey } from "../data/types";
 import {
   channelRows, chScope, getSnapshot, prevMonth, reasonStats, scopeName, series, stateRows, watchSignals, REASON_LABELS, nk, type Snapshot,
 } from "../data/metrics";
-import { buildActions, buildInsights, diagnose, executiveSummary } from "../data/narratives";
+import { buildActions, buildInsights, diagnose } from "../data/narratives";
+import { buildExecutiveNarrative } from "../story/narrative";
 import { fmtInt, fmtPct, fmtPct0, fmtPp, fmtSignedPct, monthName, monthShort, stateSlug } from "../format";
 
 export interface GenieContext {
@@ -475,10 +476,10 @@ export const ruleBasedProvider: AnswerProvider = {
 
     // ---- why / summary
     if (has(q, /why|increase|rise|rose|spike|driv|cause|explain|what happened|summary|overview|happening/)) {
-      const sum = executiveSummary(model, month);
+      const story = buildExecutiveNarrative(model, month);
       return {
         intent: "why",
-        text: sum.paragraphs.join("\n\n"),
+        text: [`**${story.headline}**`, ...story.points.map((p) => p.text)].join("\n\n"),
         kpis: [
           kp("Cancellations", fmtInt(cur.cancels), fmtSignedPct(d.cancelsMoM), (d.cancelsMoM ?? 0) > 0 ? "bad" : "good"),
           kp("Unique Sales", fmtInt(cur.sales), fmtSignedPct(d.salesMoM), (d.salesMoM ?? 0) >= 0 ? "good" : "bad"),

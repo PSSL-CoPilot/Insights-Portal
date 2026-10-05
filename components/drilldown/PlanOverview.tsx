@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUpRight, Crosshair } from "lucide-react";
 import { useApp } from "../AppContext";
@@ -9,6 +9,9 @@ import { Badge, Card, cn, RichText, SectionTitle, Tabs } from "../ui/primitives"
 import { kpiById } from "@/lib/data/metrics";
 import { diagnose } from "@/lib/data/narratives";
 import { fmtInt, fmtPct, fmtPct0, fmtSignedPct, monthLabel, monthName, stateSlug } from "@/lib/format";
+import { buildPlanNarrative } from "@/lib/story/narrative";
+import { NarrativeBlock } from "../story/NarrativeList";
+import { ChannelIcon } from "../story/ChannelIcon";
 
 const METRICS = [
   { id: "cancels", label: "Cancellations" },
@@ -27,13 +30,17 @@ export function PlanOverview(_: { kind: PlanKind }) {
     router.push(`/${k === "state" ? "states" : "channels"}/${stateSlug(name)}?month=${month}`);
   };
   const order: PlanKind[] = ["state", "channel"];
+  const narrative = useMemo(() => buildPlanNarrative(model, month), [model, month]);
   return (
     <div className="space-y-12">
-      <SectionTitle
-        eyebrow={`State and Channel Plan · ${monthLabel(month)}`}
-        title="Where do we need a plan?"
-        sub="States first, then sales channels, each ranked by cancellation growth. Select any card to open its plan."
-      />
+      <div className="space-y-6">
+        <SectionTitle
+          eyebrow={`State and Channel Plan · ${monthLabel(month)}`}
+          title="Where do we need a plan?"
+          sub="States first, then sales channels, each ranked by cancellation growth. Select any card to open its plan."
+        />
+        <NarrativeBlock points={narrative} resetKey={month} />
+      </div>
       {order.map((k) => <PlanSection key={k} kind={k} open={open} />)}
       <StateChannelMatrix onState={(s) => open("state", s)} onChannel={(c) => open("channel", c)} />
     </div>
@@ -64,7 +71,10 @@ function PlanSection({ kind, open }: { kind: PlanKind; open: (k: PlanKind, name:
             <Card key={r.name} interactive onClick={() => go(r.name)} className={cn("group animate-rise p-5", isHot && "border-bad/40 bg-bad-soft", sel === r.name && "ring-2 ring-brand")} style={{ animationDelay: `${i * 50}ms` }}>
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="flex items-center gap-2 text-[17px] font-semibold">{r.name}{isHot && <Badge tone="bad">FOCUS</Badge>}</div>
+                  <div className="flex items-center gap-2 text-[17px] font-semibold">
+                    {kind === "channel" && <span className="grid size-7 place-items-center rounded-lg bg-subtle text-mute"><ChannelIcon channel={r.name} className="size-3.5" /></span>}
+                    {r.name}{isHot && <Badge tone="bad">FOCUS</Badge>}
+                  </div>
                   <div className="mt-0.5 text-xs text-mute">{fmtInt(r.sales)} sales · {fmtInt(r.installs)} installs</div>
                 </div>
                 <span className="grid size-8 place-items-center rounded-full bg-subtle text-mute transition-colors group-hover:bg-panel group-hover:text-white"><ArrowUpRight className="size-4" /></span>

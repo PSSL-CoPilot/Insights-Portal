@@ -9,6 +9,7 @@ import path from "node:path";
 import * as XLSX from "xlsx";
 import type { DataModel } from "./types";
 import { buildModel } from "./transformations";
+import { emptyStory } from "./storySheets";
 
 export const WORKBOOK_FILE = "Brightspeed_Cancellation_Data_Jan_Sep_2026.xlsx";
 
@@ -28,7 +29,7 @@ function emptyModel(file: string, message: string): DataModel {
     months: [], latestMonth: null, states: [], drillMonth: null, watchMonth: null, hotspotState: null, workbookNotes: {},
     kpiCards: [], hotspotBlock: [], monthlyOverview: [], stateMonthly: [], stateDrill: [], oddTiming: [],
     classification: [], customerMissReasons: [], watchtower: [], journey: [], executiveQuestions: [], dictionary: [],
-    channels: null, channelNames: [], stateChannel: [],
+    channels: null, channelNames: [], stateChannel: [], story: emptyStory(),
   };
 }
 

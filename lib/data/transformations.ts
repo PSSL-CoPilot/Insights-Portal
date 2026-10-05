@@ -25,6 +25,7 @@ import type {
   WatchtowerRow,
 } from "./types";
 import { getSheet, monthFromText, parseTable, sheetGrid, sheetTitles, type Row, type TableSpec } from "./tableParser";
+import { parseStorySheets } from "./storySheets";
 
 export const SHEETS = {
   kpi: "Dashboard KPI",
@@ -409,6 +410,7 @@ export function buildModel(
       status: s(r.status), risk: s(r.risk), action: s(r.action),
     }));
   setRows(SHEETS.journey, journey.length);
+  const journeyTitles = sheetTitles(jr.grid ?? []);
 
   const eq = table(wb, SHEETS.questions, questionSpec, issues);
   const executiveQuestions: ExecQuestionRow[] = rowsOf(eq.parsed)
@@ -447,6 +449,9 @@ export function buildModel(
     setRows(SHEETS.kpi, kpiCards.length + hotspotBlock.length);
   }
   if (mo.grid) workbookNotes.monthlyOverview = sheetTitles(mo.grid)[1];
+  workbookNotes.journeyTitle = journeyTitles[0];
+  // The journey subtitle lists the lifecycle path as "A → B → C".
+  workbookNotes.journeyPath = journeyTitles.find((x) => x.split("→").length >= 3);
 
   // --- channel sheets (optional)
   let channels: ChannelMonthlyRow[] | null = null;
@@ -504,6 +509,7 @@ export function buildModel(
     channels,
     channelNames: [...new Set((channels ?? []).map((r) => r.channel))],
     stateChannel,
+    story: parseStorySheets(wb, { states, drillMonth, latestMonth }, issues, (name, rows) => sheets.push({ name, required: false, found: true, rows })),
   };
 
   // which state does the hotspot block on "Dashboard KPI" describe? (its title row mentions it)

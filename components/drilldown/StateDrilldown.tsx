@@ -17,6 +17,9 @@ import { Sparkline } from "../ui/Sparkline";
 import { Badge, Button, Card, cn, dirTone } from "../ui/primitives";
 import { assess, findFocusChannel, findHotspot, getSnapshot, isChannel, kpiById, prevMonth, scopeName, series } from "@/lib/data/metrics";
 import { stateStory, type StoryPoint } from "@/lib/data/narratives";
+import { buildScopeNarrative } from "@/lib/story/narrative";
+import { NarrativeBlock } from "../story/NarrativeList";
+import { ChannelIcon } from "../story/ChannelIcon";
 import { fmtCompact, fmtInt, fmtPct, fmtPct0, fmtPp, fmtSignedPct, monthLabel, monthName, monthShort, stateSlug } from "@/lib/format";
 
 const KPI_STRIP = ["sales", "installs", "cancels", "cancelRate", "post", "cust", "pending", "onTime"] as const;
@@ -64,6 +67,7 @@ export function StateDrilldown({ scope }: { scope: string }) {
   const prev = pm ? getSnapshot(model, pm, scope) : null;
   const port = getSnapshot(model, month, null);
   const story = useMemo(() => stateStory(model, month, scope), [model, month, scope]);
+  const narrative = useMemo(() => buildScopeNarrative(model, month, scope), [model, month, scope]);
   const hot = channel ? findFocusChannel(model, month)?.channel : findHotspot(model, month)?.state;
   const cancelMoM = assess(model, kpiById("cancels")!, month, scope);
   const isHot = hot === name && (cancelMoM.delta?.value ?? 0) > 0.15;
@@ -313,6 +317,7 @@ export function StateDrilldown({ scope }: { scope: string }) {
           <div>
             <div className="eyebrow mb-1">{channel ? "Channel plan" : "State plan"}</div>
             <div className="flex items-center gap-3">
+              {channel && <span className="grid size-10 place-items-center rounded-xl bg-panel text-white"><ChannelIcon channel={name} className="size-5" /></span>}
               <h2 className="text-[38px] font-semibold uppercase leading-none tracking-tight">{name}</h2>
               {isHot && <Badge tone="bad">FOCUS</Badge>}
             </div>
@@ -328,6 +333,8 @@ export function StateDrilldown({ scope }: { scope: string }) {
           Cancellations {fmtSignedPct(cancelMoM.delta?.value ?? null)} vs {pm ? monthName(pm) : "prior month"}
         </div>
       </div>
+
+      <NarrativeBlock points={narrative} resetKey={`${scope}-${month}`} eyebrow={`${name} · ${monthLabel(month)}`} />
 
       <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3">
         {KPI_STRIP.slice(0, 5).map((id, i) => (

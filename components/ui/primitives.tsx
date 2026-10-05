@@ -142,23 +142,36 @@ export function Tabs<T extends string>({
   );
 }
 
-/** Renders `**bold**` markers as emphasised spans. */
-export function RichText({ text, className }: { text: string; className?: string }) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+/** Renders `**bold**` markers as emphasised spans and `[[label|href]]` as subtle inline entity links. */
+export function RichText({ text, className, linkClassName }: { text: string; className?: string; linkClassName?: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*|\[\[[^\]|]+\|[^\]]+\]\])/g).filter(Boolean);
   return (
     <span className={className}>
-      {parts.map((p, i) =>
-        p.startsWith("**") ? (
-          <strong key={i} className="font-semibold text-ink">
-            {p.slice(2, -2)}
-          </strong>
-        ) : (
-          <span key={i}>{p}</span>
-        ),
-      )}
+      {parts.map((p, i) => {
+        if (p.startsWith("**")) return <strong key={i} className="font-semibold text-ink">{p.slice(2, -2)}</strong>;
+        if (p.startsWith("[[")) {
+          const [label, href] = p.slice(2, -2).split("|");
+          return (
+            <Link
+              key={i}
+              href={href}
+              className={cn(
+                "rounded-sm font-semibold text-ink underline decoration-brand-2/60 decoration-[1.5px] underline-offset-[3px] transition-colors hover:decoration-brand-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+                linkClassName,
+              )}
+            >
+              {label}
+            </Link>
+          );
+        }
+        return <span key={i}>{p}</span>;
+      })}
     </span>
   );
 }
+
+/** Strips RichText markup, for aria labels and plain text contexts. */
+export const plainText = (t: string) => t.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\[\[([^\]|]+)\|[^\]]+\]\]/g, "$1");
 
 export function EmptyState({ title, children, icon }: { title: string; children?: ReactNode; icon?: ReactNode }) {
   return (

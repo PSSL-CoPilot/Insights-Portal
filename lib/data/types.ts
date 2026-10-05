@@ -203,6 +203,199 @@ export interface StateChannelRow {
   pendingPct: number | null;
 }
 
+// ------------------------------------------------------------------ story layer (optional sheets)
+/** "<State> Agency Monthly": each agency against its own Jan to Aug baseline. */
+export interface AgencyMonthRow {
+  month: MonthKey;
+  agency: string;
+  channel: string;
+  sales: number | null;
+  cancels: number | null;
+  cancelRate: number | null;
+  completionRate: number | null;
+  disposition: string;
+  baseline: number | null;
+  gap: number | null;
+}
+
+/** "<State> Agency September": drill month vs each agency's own history, with sales quality signals. */
+export interface AgencySnapshotRow {
+  agency: string;
+  channel: string;
+  baseline: number | null;
+  prevSales: number | null;
+  prevCancels: number | null;
+  sales: number | null;
+  cancels: number | null;
+  cancelRate: number | null;
+  gap: number | null;
+  disposition: string;
+  pattern: string;
+  lowIntent: number | null;
+  promo: number | null;
+  competitor: number | null;
+  failedConfirm: number | null;
+}
+
+export interface RepCohortRow {
+  agency: string;
+  cohort: string;
+  reps: number | null;
+  prevSales: number | null;
+  prevCancels: number | null;
+  prevRate: number | null;
+  sales: number | null;
+  cancels: number | null;
+  rate: number | null;
+  salesShare: number | null;
+  cancelShare: number | null;
+  band: string;
+}
+
+export interface RepRow {
+  id: string;
+  agency: string;
+  channel: string;
+  cohort: string;
+  tenure: number | null;
+  prevSales: number | null;
+  prevCancels: number | null;
+  sales: number | null;
+  cancels: number | null;
+  rate: number | null;
+  band: string;
+  lowIntent: number | null;
+  promo: number | null;
+  competitor: number | null;
+  failedConfirm: number | null;
+}
+
+export type DriverKind = "sales" | "contact" | "company" | "faux" | "total" | "other";
+
+/** One primary cause per order; rows reconcile to the focus state's cancellations. */
+export interface DriverRow {
+  kind: DriverKind;
+  driver: string;
+  cancels: number | null;
+  share: number | null;
+  interpretation: string;
+}
+
+export interface ReclassRow {
+  classification: string;
+  isTotal: boolean;
+  recorded: number | null;
+  recordedShare: number | null;
+  adjusted: number | null;
+  adjustedShare: number | null;
+  meaning: string;
+}
+
+export type ForecastViewKind = "baseline" | "actual" | "noAction" | "intervention" | "other";
+
+export interface ForecastViewRow {
+  kind: ForecastViewKind;
+  view: string;
+  /** Month the view describes, when its label names one ("August actual"). */
+  month: MonthKey | null;
+  rate: number | null;
+  interpretation: string;
+}
+
+export interface ForecastStateRow {
+  state: string;
+  isTotal: boolean;
+  sales: number | null;
+  cancels: number | null;
+  rate: number | null;
+  prevRate: number | null;
+}
+
+export interface ForecastChannelRow {
+  channel: string;
+  /** True for the state roll-up row at the bottom of the table. */
+  isTotal: boolean;
+  prevRate: number | null;
+  sales: number | null;
+  cancels: number | null;
+  rate: number | null;
+  delta: number | null;
+  baseline: number | null;
+  risk: string;
+}
+
+export type InterventionKind = "sales" | "install" | "contact" | "total" | "other";
+
+export interface InterventionRow {
+  kind: InterventionKind;
+  name: string;
+  saves: number | null;
+  share: number | null;
+  action: string;
+  population: string;
+}
+
+export interface OutcomeRow {
+  kind: "noAction" | "intervention" | "prevented" | "other";
+  label: string;
+  cancels: number | null;
+  rate: number | null;
+}
+
+export interface SegmentRow {
+  segment: string;
+  isTotal: boolean;
+  orders: number | null;
+  signal: string;
+  action: string;
+  objective: string;
+}
+
+export interface MeasureRow {
+  measure: string;
+  actual: string;
+  noAction: string;
+  target: string;
+  role: string;
+  meaning: string;
+}
+
+export interface CountRow {
+  label: string;
+  value: number | null;
+}
+
+export interface PairRow {
+  label: string;
+  value: string;
+}
+
+export interface StoryData {
+  /** State the agency, representative and attribution sheets describe (read from their titles). */
+  focusState: string | null;
+  /** Month the single month story sheets describe (the drill month). */
+  month: MonthKey | null;
+  agencyMonthly: AgencyMonthRow[];
+  agencies: AgencySnapshotRow[];
+  cohorts: RepCohortRow[];
+  reps: RepRow[];
+  drivers: DriverRow[];
+  reclass: ReclassRow[];
+  forecastMonth: MonthKey | null;
+  forecastViews: ForecastViewRow[];
+  forecastStates: ForecastStateRow[];
+  forecastChannels: ForecastChannelRow[];
+  interventions: InterventionRow[];
+  outcomes: OutcomeRow[];
+  segments: SegmentRow[];
+  measures: MeasureRow[];
+  /** Contact risk population: orders at risk, projected cancels, potentially protected (in sheet order). */
+  contactRisk: CountRow[];
+  contactRules: PairRow[];
+  exampleOrder: PairRow[];
+  exampleInstall: PairRow[];
+}
+
 export type IssueLevel = "error" | "warn" | "info";
 
 export interface DataIssue {
@@ -235,7 +428,7 @@ export interface DataModel {
   watchMonth: MonthKey | null;
   /** State the "hotspot" block on Dashboard KPI describes (parsed from its title row). */
   hotspotState: string | null;
-  workbookNotes: { dashboardKpi?: string; monthlyOverview?: string };
+  workbookNotes: { dashboardKpi?: string; monthlyOverview?: string; journeyPath?: string; journeyTitle?: string };
   kpiCards: KpiCardRow[];
   hotspotBlock: HotspotRow[];
   monthlyOverview: MonthlyOverviewRow[];
@@ -252,4 +445,6 @@ export interface DataModel {
   channels: ChannelMonthlyRow[] | null;
   channelNames: string[];
   stateChannel: StateChannelRow[];
+  /** Agency, attribution, forecast and prevention tables. Empty arrays when the sheets are absent. */
+  story: StoryData;
 }

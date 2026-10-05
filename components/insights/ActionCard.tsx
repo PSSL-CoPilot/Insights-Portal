@@ -52,7 +52,11 @@ export function ActionCard({ action, month, record, onUpdate, index = 0 }: { act
     <Card id={action.id} className={cn("flex animate-rise flex-col p-5 transition sm:p-6", done && "opacity-75")} style={{ animationDelay: `${index * 70}ms` }}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2"><Badge tone={prio[action.priority]}>{action.priority.toUpperCase()}</Badge><span className="text-xs text-mute">{action.owner}</span></div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone={prio[action.priority]}>{action.priority.toUpperCase()}</Badge>
+            {action.saves != null && <span className="num rounded-full bg-teal-soft px-2 py-0.5 text-[11px] font-semibold leading-5 text-teal">about {fmtInt(action.saves)} potential saves</span>}
+            <span className="text-xs text-mute">{action.owner}</span>
+          </div>
           <h3 className={cn("mt-2.5 text-[19px] font-semibold tracking-tight", done && "line-through decoration-2")}>{action.title}</h3>
         </div>
         <div role="radiogroup" aria-label="Status" className="inline-flex rounded-full border border-line bg-line-2 p-1">
