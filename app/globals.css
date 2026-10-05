@@ -17,10 +17,10 @@
   --color-brand: #ffc72c;
   --color-brand-2: #f26a36;
   --color-brand-soft: #fff1e6;
-  --color-canvas: #ebebe8;
+  --color-canvas: #ffffff;
   --color-card: #ffffff;
-  --color-glass: rgba(255, 255, 255, 0.72);
-  --color-subtle: #f5f5f3;
+  --color-glass: rgba(255, 255, 255, 0.92);
+  --color-subtle: #f6f6f4;
   --color-line: #e6e6e2;
   --color-line-2: #f0f0ed;
   --color-mute: #6f6f74;
@@ -42,9 +42,9 @@
   --color-teal: #0f8a86;
   --color-teal-soft: #e2f4f2;
   /* Story map */
-  --color-map-land: #fbfbf9;
+  --color-map-land: #f2f2ef;
   --color-map-footprint: #c9ccd5;
-  --color-map-stroke: #d6d6d1;
+  --color-map-stroke: #d9d9d4;
   --color-map-label: #17171a;
 
   --shadow-card: 0 1px 1px rgba(17, 17, 20, 0.02), 0 12px 32px -18px rgba(17, 17, 20, 0.12);
@@ -131,8 +131,8 @@ html { scroll-behavior: smooth; scroll-padding-top: 96px; }
 body {
   zoom: 0.88;
   background:
-    radial-gradient(900px 520px at 6% -8%, rgba(255, 186, 120, 0.22), transparent 62%),
-    radial-gradient(1100px 600px at 96% -12%, rgba(255, 214, 102, 0.16), transparent 60%),
+    radial-gradient(900px 520px at 6% -8%, rgba(255, 186, 120, 0.09), transparent 62%),
+    radial-gradient(1100px 600px at 96% -12%, rgba(255, 214, 102, 0.07), transparent 60%),
     var(--color-canvas);
   background-attachment: fixed;
   color: var(--color-ink);
@@ -164,7 +164,7 @@ body {
 /* Frosted surface: translucent fill with a bright hairline, no backdrop filter (cheap on every machine). */
 .glass {
   background: var(--color-glass);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--color-line);
   box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 .dark .glass { border-color: rgba(255, 255, 255, 0.06); box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.04); }

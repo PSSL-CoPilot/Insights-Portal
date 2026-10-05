@@ -16,7 +16,7 @@ function Select({ value, onChange, children, label, className }: { value: string
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-full cursor-pointer appearance-none rounded-full border border-white/90 bg-card pl-5 pr-10 text-[13px] font-semibold text-ink shadow-card outline-none transition hover:shadow-pop focus:ring-4 focus:ring-brand/30 dark:border-white/[0.06]"
+        className="h-11 w-full cursor-pointer appearance-none rounded-full border border-line/80 bg-card pl-5 pr-10 text-[13px] font-semibold text-ink shadow-card outline-none transition hover:shadow-pop focus:ring-4 focus:ring-brand/30 dark:border-white/[0.06]"
       >
         {children}
       </select>
@@ -39,7 +39,7 @@ function ThemeToggle() {
   };
   return (
     <button onClick={toggle} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} title={dark ? "Light mode" : "Dark mode"}
-      className="grid size-11 place-items-center rounded-full border border-white/90 bg-card text-mute shadow-card transition hover:text-ink hover:shadow-pop dark:border-white/[0.06]">
+      className="grid size-11 place-items-center rounded-full border border-line/80 bg-card text-mute shadow-card transition hover:text-ink hover:shadow-pop dark:border-white/[0.06]">
       {dark ? <Sun className="size-[17px] text-brand" /> : <Moon className="size-[17px]" />}
     </button>
   );
@@ -94,7 +94,7 @@ export function TopBar() {
             ))}
           </Select>
           <ThemeToggle />
-          <button aria-label="Notifications" className="relative hidden size-11 place-items-center rounded-full border border-white/90 bg-card text-mute shadow-card transition hover:text-ink hover:shadow-pop dark:border-white/[0.06] sm:grid">
+          <button aria-label="Notifications" className="relative hidden size-11 place-items-center rounded-full border border-line/80 bg-card text-mute shadow-card transition hover:text-ink hover:shadow-pop dark:border-white/[0.06] sm:grid">
             <Bell className="size-[17px]" />
             <span className="absolute right-2.5 top-2.5 size-2 rounded-full border-2 border-card bg-bad" />
           </button>

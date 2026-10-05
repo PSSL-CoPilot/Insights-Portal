@@ -23,7 +23,7 @@ function Panel({ title, children, className, tone = "observed" }: { title?: stri
     <div
       className={cn(
         "rounded-[26px] border p-5 shadow-card sm:p-6",
-        tone === "preventive" ? "border-teal/25 bg-card" : "border-white/90 bg-card dark:border-white/[0.06]",
+        tone === "preventive" ? "border-teal/25 bg-card" : "border-line/80 bg-card dark:border-white/[0.06]",
         className,
       )}
     >
@@ -373,7 +373,7 @@ function MapLegend({ states }: { states: Extract<SceneVisual, { kind: "map" }>["
     <div>
       <div className="flex flex-wrap justify-center gap-2">
         {rows.map((s, i) => (
-          <motion.div key={s.name} {...rise(i, 0.9)} className="flex items-center gap-2 rounded-full border border-white/90 bg-card px-3.5 py-2 text-[13px] shadow-card dark:border-white/[0.06]">
+          <motion.div key={s.name} {...rise(i, 0.9)} className="flex items-center gap-2 rounded-full border border-line/80 bg-card px-3.5 py-2 text-[13px] shadow-card dark:border-white/[0.06]">
             <span className="text-mute">{s.name}</span>
             <span className={cn("num font-semibold", s.severity === "critical" ? "text-bad" : "text-ink")}>{s.label}</span>
           </motion.div>
@@ -388,7 +388,7 @@ function FocusCallout({ states, zoom }: { states: Extract<SceneVisual, { kind: "
   const s = states.find((x) => x.name === zoom);
   if (!s) return null;
   return (
-    <motion.div {...rise(0, 2.2)} className="inline-flex items-center gap-3 rounded-full border border-white/90 bg-card py-2 pl-2 pr-5 shadow-card dark:border-white/[0.06]">
+    <motion.div {...rise(0, 2.2)} className="inline-flex items-center gap-3 rounded-full border border-line/80 bg-card py-2 pl-2 pr-5 shadow-card dark:border-white/[0.06]">
       <span className="grid size-10 place-items-center rounded-full bg-bad text-[13px] font-bold text-white">{zoom.split(" ").map((w) => w[0]).join("")}</span>
       <span className="text-[14px] font-semibold text-ink">{zoom}</span>
       <span className="num-display text-[26px] leading-none text-bad">{s.label}</span>
