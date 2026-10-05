@@ -40,6 +40,7 @@ export type EvidenceSpec = { title: string; interpretation: string } & (
   | { kind: "measures" }
   | { kind: "sales-quality" }
   | { kind: "sales-prevention" }
+  | { kind: "high-value" }
 );
 
 export type EvidenceKind = EvidenceSpec["kind"];
@@ -83,9 +84,9 @@ export type SceneVisual =
   | { kind: "map"; zoom: string | null; states: { name: string; value: number | null; label: string; severity: "critical" | "warning" | "normal" }[] }
   | { kind: "channels"; state: string; rows: { channel: string; rate: number | null; sales: number | null; outlier: boolean }[]; normal: [number, number] | null }
   | { kind: "agencies"; rows: { agency: string; channel: string; baseline: number | null; rate: number | null; gap: number | null; weak: boolean }[]; cohort: { agency: string; cohort: string; salesShare: number | null; cancelShare: number | null; rate: number | null } | null }
-  | { kind: "sales-signals"; signals: { label: string; value: number | null }[]; example: { label: string; value: string }[]; action: string }
+  | { kind: "sales-signals"; signals: { label: string; value: number | null }[]; example: { label: string; value: string }[]; action: string; stats: { orders: number | null; projected: number | null; saves: number | null; month: string } | null }
   | { kind: "split"; total: number | null; parts: { kind: string; label: string; cancels: number | null; share: number | null; emphasis: boolean }[]; signal: number | null }
-  | { kind: "timing"; portfolio: number | null; focus: number | null; focusName: string | null; prev: number | null; drivers: { label: string; count: number | null; mom: number | null }[] }
+  | { kind: "timing"; rows: { label: string; pre: number | null; on: number | null; post: number | null; emphasis: boolean }[]; drivers: { label: string; count: number | null; mom: number | null }[] }
   | { kind: "journey"; nodes: { label: string; severity: "neutral" | "warning" | "critical"; badge?: string }[] }
   | { kind: "install"; segments: { label: string; orders: number | null; action: string; signal: string }[]; total: number | null; example: { label: string; value: string }[]; saves: number | null }
   | { kind: "contact"; funnel: { label: string; value: number | null }[]; rules: { label: string; value: string }[] }

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, ChevronRight, Radar } from "lucide-react";
 import { PageInsights } from "../story/PageInsights";
+import { WatchtowerAgencies } from "./WatchtowerAgencies";
 import { useApp } from "../AppContext";
 import { Badge, Card, cn, LinkButton, SectionTitle } from "../ui/primitives";
 import { C } from "../charts/shared";
@@ -128,6 +129,8 @@ export function WatchtowerPage() {
           </section>
         </>
       )}
+
+      {(!scope || scope === model.story.focusState) && <WatchtowerAgencies />}
 
       {/* 3 · story */}
       {storyState && <SignalStory storyState={storyState} onChange={(s) => setState(s)} />}

@@ -19,14 +19,14 @@ const rel = (a: number | null | undefined, b: number | null | undefined) => (a !
 /** Display names for the prevention layers (the workbook keeps its internal programme names). */
 export const INTERVENTION_LABEL: Record<InterventionRow["kind"], string> = {
   sales: "Sales quality verification",
-  install: "Installation readiness",
+  install: "High-value customer protection",
   contact: "Customer-contact rescue",
   total: "Deduplicated total",
   other: "Recommended intervention",
 };
 /** Imperative form for the "what to do now" line. */
 const INTERVENTION_VERB: Record<InterventionRow["kind"], string> = {
-  sales: "verify risky sales", install: "fix installation readiness", contact: "rescue customer contact", total: "act", other: "act",
+  sales: "verify risky sales", install: "protect high-value customers", contact: "rescue customer contact", total: "act", other: "act",
 };
 const INTERVENTION_ACTION: Partial<Record<InterventionRow["kind"], string>> = { sales: "sales-quality", install: "install", contact: "confirm" };
 
@@ -229,6 +229,19 @@ function executivePoints(f: StoryFacts): NarrativePoint[] | null {
       id: "timing", mode: "observed", label: "When", tone: "bad",
       text: `Most customers are lost late: **${fmtPct0(port.postPct)}** cancel after the ${link("due date", hrefs.postOdd(month))}${f.focusSnap?.postPct != null ? ` (**${fmtPct0(f.focusSnap.postPct)}** in ${focus.state})` : ""}${late.length ? `, led by ${listJoin(late)}` : ""}.`,
       evidence: { kind: "timing", scope: focus.state, title: `${focus.state} cancellation timing by month`, interpretation: "The loss happens after the committed date: an appointment journey failure, not an early change of mind." },
+    });
+  }
+
+  // Forward-looking: protect high-value customers whose installation is at risk.
+  const hv = f.highValue, ivi = f.interventions.install;
+  if (ivi && hv.total !== null && hv.accelerate && hv.resetOdd) {
+    out.push({
+      id: "high-value", mode: "preventive", label: `${f.forecast.month ? monthName(f.forecast.month) : "Next month"} prevention: high-value customers`, tone: "warn",
+      text:
+        `Combine each order's cancellation-risk score with customer value, the ODD and permit and construction readiness. ` +
+        `Of **${fmtInt(hv.total)}** ${focus.state} delivery-risk orders, **${fmtInt(hv.accelerate.orders)}** high-value customers are ready but scheduled late: bring their installation forward. ` +
+        `**${fmtInt(hv.resetOdd.orders)}** have an ODD that cannot be met: correct the commitment before it fails. About **${fmtInt(ivi.saves)}** cancellations avoided.`,
+      evidence: { kind: "high-value", title: "High-value customer protection", interpretation: "Act where it pays: speed up ready high-value jobs, reset impossible dates early, and leave low-risk orders on their normal route." },
     });
   }
 

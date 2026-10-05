@@ -484,10 +484,10 @@ function withPreventionPlan(model: DataModel, month: MonthKey, list: ActionItem[
   if (install && segs.length) {
     const total = st.segments.find((s) => s.isTotal)?.orders ?? segs.reduce((a, s) => a + (s.orders ?? 0), 0);
     const item: ActionItem = {
-      id: "install", title: "Installation Readiness Segmentation", ...own("Installation Planning"), priority: "High", market: hot.state,
+      id: "install", title: "High-Value Customer Protection", ...own("Installation Planning"), priority: "High", market: hot.state,
       population: total, populationLabel: `${hot.state} delivery-risk orders`,
       impact: `${install.action}. Potential saves: about ${fmtInt(install.saves)} orders.`,
-      why: "Treating every at-risk installation the same wastes effort; each segment needs a different response.",
+      why: "Ready high-value customers should not be lost to a late date, and impossible dates should be corrected before they fail; each segment needs a different response.",
       evidence: segs.map((s) => `${s.segment}: ${fmtInt(s.orders)} orders (${s.signal.toLowerCase()})`),
       request: segs.map((s) => `${s.segment}: ${s.action.toLowerCase()}`).join("; ") + ".",
       measures: ["ODD miss rate on delivery-risk orders", "Post ODD cancellation share", "Ready jobs accelerated"],

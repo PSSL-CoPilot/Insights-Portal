@@ -11,6 +11,7 @@ import { Badge, Card, RichText } from "../ui/primitives";
 import { Sparkline } from "../ui/Sparkline";
 import { NarrativeList } from "./NarrativeList";
 import { ActionsDrawer } from "./ActionsDrawer";
+import { DownloadSlidesButton } from "./SlideExport";
 import { buildExecutiveNarrative } from "@/lib/story/narrative";
 import { buildStoryScenes } from "@/lib/story/scenes";
 import { storyFacts } from "@/lib/story/facts";
@@ -47,7 +48,7 @@ export function ExecutiveStory() {
     <section aria-labelledby="exec-summary">
       <Card className="warm-wash relative overflow-clip">
         <div className="relative grid lg:grid-cols-[minmax(0,1fr)_minmax(300px,26%)]">
-          <div className="p-6 sm:p-9 xl:px-11">
+          <div className="@container min-w-0 p-6 sm:p-9 xl:px-11">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2.5">
                 <GenieMark size={30} />
@@ -56,6 +57,8 @@ export function ExecutiveStory() {
                 {story.status && <Badge tone={story.status.tone === "bad" ? "bad" : "good"}>{story.status.label}</Badge>}
               </div>
               {scenes.length > 1 && (
+                <div className="flex items-center gap-2">
+                <DownloadSlidesButton scenes={scenes} month={month} />
                 <button
                   onClick={() => setPlaying(true)}
                   className="group inline-flex h-11 items-center gap-2.5 rounded-full bg-panel pl-1.5 pr-5 text-[13.5px] font-semibold text-white shadow-pop transition-transform duration-300 hover:-translate-y-0.5"
@@ -64,10 +67,11 @@ export function ExecutiveStory() {
                   <span className="bs-gradient grid size-8 place-items-center rounded-full text-white"><Play className="size-3.5 translate-x-[1px] fill-current" /></span>
                   Play What Happened
                 </button>
+                </div>
               )}
             </div>
 
-            <h2 id="exec-summary" className="mt-6 max-w-4xl text-balance text-[30px] font-medium leading-[1.12] tracking-[-0.03em] sm:text-[40px]">
+            <h2 id="exec-summary" className="mt-6 text-[26px] font-medium leading-[1.12] tracking-[-0.03em] sm:whitespace-nowrap sm:text-[min(42px,3.9cqw)]">
               <span className="bs-gradient-text block pb-1">Hey {firstName(profile.name) || "there"},</span>
               <RichText text={story.headline} />
             </h2>

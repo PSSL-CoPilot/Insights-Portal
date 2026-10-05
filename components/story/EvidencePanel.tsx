@@ -195,6 +195,8 @@ function EvidenceBody({ spec }: { spec: EvidenceSpec }) {
       return <SalesQualityEvidence />;
     case "sales-prevention":
       return <SalesPreventionEvidence />;
+    case "high-value":
+      return <HighValueEvidence />;
   }
 }
 
@@ -285,6 +287,66 @@ function SalesPreventionEvidence() {
         )}
       </div>
       {iv && <div className="rounded-2xl bg-teal-soft px-4 py-3 text-[13px] text-teal"><strong>Targeted action:</strong> {iv.action}.</div>}
+    </div>
+  );
+}
+
+/** Delivery risk segmentation: risk x customer value x ODD x readiness, with the action for each segment. */
+function HighValueEvidence() {
+  const { model, month } = useApp();
+  const f = storyFacts(model, month);
+  const hv = f.highValue;
+  const iv = f.interventions.install;
+  const segs = model.story.segments.filter((s) => !s.isTotal);
+  if (!segs.length) return <Unavailable text="The delivery risk segmentation is not available in the workbook." />;
+  const tone = (s: (typeof segs)[number]) =>
+    s === hv.accelerate ? { ring: "border-teal/40 bg-teal-soft/50", text: "text-teal" }
+    : s === hv.resetOdd ? { ring: "border-bad/30 bg-bad-soft/40", text: "text-bad" }
+    : s === hv.handOff ? { ring: "border-warn/30 bg-warn-soft/40", text: "text-warn" }
+    : { ring: "border-line bg-card", text: "text-mute" };
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-baseline gap-2 text-[13px] text-mute">
+        <span className="num-display text-[28px] leading-none text-ink">{fmtInt(hv.total)}</span>
+        {f.focus?.state} delivery-risk orders, split by cancellation risk, customer value, ODD and permit and construction readiness
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {segs.map((s) => {
+          const t = tone(s);
+          return (
+            <div key={s.segment} className={cn("rounded-2xl border p-4", t.ring)}>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="num-display text-[30px] leading-none">{fmtInt(s.orders)}</span>
+                <span className={cn("text-right text-[12.5px] font-semibold", t.text)}>{s.action}</span>
+              </div>
+              <div className="mt-2 text-[13px] font-medium text-ink">{s.segment}</div>
+              <div className="mt-0.5 text-[12px] text-mute">{s.signal}{s.objective ? ` · ${s.objective}` : ""}</div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
+        {model.story.exampleInstall.length > 0 && (
+          <div className="rounded-2xl border border-teal/25 bg-card p-4">
+            <div className="mb-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-teal">Readiness status: example order</div>
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12.5px] sm:grid-cols-4">
+              {model.story.exampleInstall.map((e) => (
+                <div key={e.label}>
+                  <dt className="text-mute">{e.label}</dt>
+                  <dd className={/recommended/i.test(e.label) ? "font-semibold text-teal" : "font-semibold"}>{e.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+        {iv && (
+          <div className="flex flex-col justify-center rounded-2xl bg-teal px-5 py-4 text-white dark:text-[#06201f]">
+            <div className="num-display text-[32px] leading-none">{fmtInt(iv.saves)}</div>
+            <div className="mt-1 text-[12px] opacity-90">potential saves</div>
+          </div>
+        )}
+      </div>
+      {iv && <div className="rounded-2xl bg-teal-soft px-4 py-3 text-[13px] text-teal"><strong>Recommended action:</strong> {iv.action}.</div>}
     </div>
   );
 }

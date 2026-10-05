@@ -93,6 +93,22 @@ export function buildWatchtowerNarrative(model: DataModel, month: MonthKey, scop
       evidence: { kind: "watch", scope: f.focus.state, title: `${f.focus.state} Watchtower signals`, interpretation: "The early warning is concentrated where the exception is." },
     });
   }
+  // Agency and representative bands (the partner and rep data comes from Watchtower).
+  if (f.hasStory && f.focus && (!scope || scope === f.focus.state)) {
+    const active = model.story.reps.filter((r) => (r.sales ?? 0) > 0);
+    const crit = active.filter((r) => /critical/i.test(r.band));
+    const byAgency = [...new Set(crit.map((r) => r.agency))].map((ag) => ({ ag, n: crit.filter((r) => r.agency === ag).length })).sort((a, b) => b.n - a.n);
+    const steadyNames = new Set(f.steadyAgencies.map((a) => a.agency));
+    const steadyCrit = crit.filter((r) => steadyNames.has(r.agency)).length;
+    if (crit.length) {
+      out.push({
+        id: "reps", mode: "observed", label: "Agencies and reps", tone: "bad",
+        text: `Watchtower rates **${crit.length} of ${active.length}** active partner reps in ${f.focus.state} Critical (above 40% cancelled): ${listJoin(byAgency.map((x) => `${x.n} at ${agencyLink(x.ag, month)}`))}.${steadyCrit === 0 && f.steadyAgencies.length ? " The agencies on their normal history have none." : ""}`,
+        evidence: { kind: "sales-quality", title: `${f.focus.state} agencies and representatives`, interpretation: "The Critical reps sit inside the agencies that broke from their own history." },
+      });
+    }
+  }
+
   const cr = f.contactRisk;
   if (f.hasStory && cr.orders !== null && (!scope || scope === f.focus?.state)) {
     out.push({

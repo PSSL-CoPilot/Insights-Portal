@@ -16,6 +16,11 @@ const RED = "var(--color-bad)";
 const AMBER = "#f5a524";
 const TEAL = "var(--color-teal)";
 const MUTED = "var(--color-slate-soft)";
+const ODD = [
+  { key: "pre", label: "Pre ODD", color: "var(--color-slate-soft)" },
+  { key: "on", label: "On ODD", color: AMBER },
+  { key: "post", label: "Post ODD", color: RED },
+] as const;
 const SAVE_COLORS = ["var(--color-teal)", "#5fb3d9", "#9ad6a6"];
 
 function Panel({ title, children, className, tone = "observed" }: { title?: string; children: ReactNode; className?: string; tone?: "observed" | "preventive" }) {
@@ -141,6 +146,20 @@ export function SceneVisualView({ visual, actions }: { visual: SceneVisual; acti
     case "sales-signals":
       return (
         <div className="grid gap-4 md:grid-cols-[1.15fr_1fr]">
+          {visual.stats && (
+            <div className="grid gap-3 sm:grid-cols-3 md:col-span-2">
+              {[
+                { v: visual.stats.orders, l: `${visual.stats.month} orders to score`, cls: "bg-card" },
+                { v: visual.stats.projected, l: "projected to cancel without action", cls: "bg-card text-bad" },
+                { v: visual.stats.saves, l: "cancellations avoided by verifying risky orders", cls: "bg-teal text-white dark:text-[#06201f]" },
+              ].map((s, i) => (
+                <motion.div key={s.l} {...rise(i, 0.1)} className={cn("rounded-[20px] p-4 shadow-card", s.cls)}>
+                  <div className="num-display text-[34px] leading-none">{fmtInt(s.v)}</div>
+                  <div className="mt-1.5 text-[12.5px] opacity-80">{s.l}</div>
+                </motion.div>
+              ))}
+            </div>
+          )}
           <Panel title="Risk factors used to score orders" tone="preventive">
             <div className="space-y-4">
               {visual.signals.map((s, i) => (
@@ -209,16 +228,34 @@ export function SceneVisualView({ visual, actions }: { visual: SceneVisual; acti
     case "timing":
       return (
         <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
-          <Panel title="Cancelled after the Original Due Date">
-            <div className="flex items-end justify-around gap-2">
-              {[
-                { label: "Prior month", v: visual.prev, color: "var(--color-slate-soft)" },
-                { label: "Portfolio", v: visual.portfolio, color: AMBER },
-                ...(visual.focusName ? [{ label: visual.focusName, v: visual.focus, color: RED }] : []),
-              ].map((x, i) => (
-                <motion.div key={x.label} {...rise(i)} className="text-center">
-                  <Gauge size={132} thickness={11} value={x.v} max={1} color={x.color} center={<span className="num-display text-[28px] leading-none">{fmtPct0(x.v)}</span>} />
-                  <div className="mt-1 text-[13px] font-medium text-ink-2">{x.label}</div>
+          <Panel title="When cancellations happen: Pre, On and Post ODD">
+            <div className="mb-4 flex flex-wrap gap-4 text-[12px] text-mute">
+              {ODD.map((o) => <span key={o.key} className="flex items-center gap-1.5"><span className="h-2.5 w-5 rounded-full" style={{ background: o.color }} />{o.label}</span>)}
+            </div>
+            <div className="space-y-4">
+              {visual.rows.map((r, i) => (
+                <motion.div key={r.label} {...rise(i)}>
+                  <div className={cn("mb-1.5 flex items-baseline justify-between text-[13.5px]", r.emphasis ? "font-semibold text-ink" : "text-ink-2")}>
+                    <span>{r.label}</span>
+                    <span className="num">Post ODD <span className={cn("num-display text-[22px]", r.emphasis ? "text-bad" : "text-ink")}>{fmtPct0(r.post)}</span></span>
+                  </div>
+                  <div className="flex h-7 w-full gap-1 overflow-hidden rounded-full">
+                    {ODD.map((o, j) => {
+                      const v = r[o.key];
+                      return (
+                        <motion.div
+                          key={o.key}
+                          className="flex h-full items-center justify-center rounded-full text-[11.5px] font-semibold"
+                          style={{ width: `${(v ?? 0) * 100}%`, background: o.color, color: o.key === "pre" ? "var(--color-ink)" : "#fff", transformOrigin: "0 50%" }}
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: 1 }}
+                          transition={{ duration: 0.7, ease, delay: 0.25 + i * 0.25 + j * 0.12 }}
+                        >
+                          {(v ?? 0) >= 0.08 ? fmtPct0(v) : ""}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
                 </motion.div>
               ))}
             </div>

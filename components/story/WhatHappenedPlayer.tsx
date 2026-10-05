@@ -13,6 +13,8 @@ import type { SceneLayout, StoryScene } from "@/lib/story/types";
 import type { MonthKey } from "@/lib/data/types";
 import { monthLabel } from "@/lib/format";
 import { analysisHref } from "@/lib/story/links";
+import { DownloadSlidesButton } from "./SlideExport";
+import { EDGE_FADE, Layout, MAP_FRAME, SceneText, frameV, mapStateFor, visualV } from "./SceneFrame";
 
 const ease = [0.22, 0.9, 0.24, 1] as const;
 const NARROW_FRAME: MapFrame = { x0: 0.03, x1: 0.97, y0: 0.42, y1: 0.86 };
@@ -28,39 +30,6 @@ function useWide() {
   }, []);
   return wide;
 }
-
-const EDGE_FADE = "linear-gradient(to bottom, transparent 0%, #000 7%, #000 90%, transparent 100%), linear-gradient(to right, transparent 0%, #000 4%, #000 96%, transparent 100%)";
-
-/** Where the map subject sits for each narration layout (fractions of the stage). */
-const MAP_FRAME: Record<SceneLayout, MapFrame> = {
-  top: { x0: 0.06, x1: 0.94, y0: 0.27, y1: 0.86 },
-  bottom: { x0: 0.06, x1: 0.94, y0: 0.03, y1: 0.64 },
-  right: { x0: 0.02, x1: 0.58, y0: 0.06, y1: 0.92 },
-  left: { x0: 0.42, x1: 0.98, y0: 0.06, y1: 0.92 },
-};
-
-/** Entry direction of the narration for each layout; exits drift the other way. All with motion blur. */
-const OFFSET: Record<SceneLayout, { x: number; y: number }> = {
-  top: { x: 0, y: -28 },
-  bottom: { x: 0, y: 28 },
-  right: { x: 36, y: 0 },
-  left: { x: -36, y: 0 },
-};
-
-const frameV: Variants = {
-  enter: { transition: { staggerChildren: 0.09, delayChildren: 0.2 } },
-  exit: { transition: { staggerChildren: 0.04, staggerDirection: -1 } },
-};
-const textV: Variants = {
-  initial: (l: SceneLayout) => ({ opacity: 0, x: OFFSET[l].x, y: OFFSET[l].y, filter: "blur(14px)" }),
-  enter: { opacity: 1, x: 0, y: 0, filter: "blur(0px)", transition: { duration: 0.7, ease } },
-  exit: (l: SceneLayout) => ({ opacity: 0, x: -OFFSET[l].x * 0.5, y: -OFFSET[l].y * 0.5, filter: "blur(10px)", transition: { duration: 0.35, ease: [0.4, 0, 1, 1] } }),
-};
-const visualV: Variants = {
-  initial: { opacity: 0, scale: 0.965, y: 18, filter: "blur(12px)" },
-  enter: { opacity: 1, scale: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.75, ease } },
-  exit: { opacity: 0, scale: 0.985, y: -10, filter: "blur(10px)", transition: { duration: 0.35, ease: [0.4, 0, 1, 1] } },
-};
 
 /**
  * Full-screen guided briefing that follows the app theme (light or dark). Scenes come from
@@ -85,14 +54,10 @@ export function WhatHappenedPlayer({
 
   // Map: fills from the current (or latest earlier) map scene, zoom once the story reaches it.
   const mapScenes = useMemo(() => scenes.map((s, i) => ({ s, i })).filter((x) => x.s.visual.kind === "map"), [scenes]);
-  const activeMap = [...mapScenes].reverse().find((x) => x.i <= index) ?? mapScenes[0];
-  const mapStates = activeMap?.s.visual.kind === "map" ? activeMap.s.visual.states : [];
-  const zoom = activeMap?.s.visual.kind === "map" ? activeMap.s.visual.zoom : null;
-  const isMapScene = scene.visual.kind === "map";
+  const { mapStates, zoom, layout: mapLayout, isMapScene, opacity: mapOpacity } = mapStateFor(scenes, index);
   const wide = useWide();
   // On narrow screens the narration stacks above the visual, so the map always sits in the lower stage.
-  const frame = wide ? MAP_FRAME[activeMap?.s.layout ?? "top"] : NARROW_FRAME;
-  const mapOpacity = isMapScene ? 1 : scene.mode === "preventive" ? 0.05 : 0.08;
+  const frame = wide ? MAP_FRAME[mapLayout] : NARROW_FRAME;
 
   // ---- timeline
   useEffect(() => {
@@ -191,15 +156,15 @@ export function WhatHappenedPlayer({
   );
 
   return createPortal(
-    <MotionConfig reducedMotion="user">
+    <MotionConfig reducedMotion="never">
       <motion.div
         ref={root}
         role="dialog"
         aria-modal="true"
         aria-label={`What happened, ${monthLabel(month)}`}
         className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-canvas text-ink"
-        initial={{ opacity: 0, filter: "blur(8px)" }}
-        animate={{ opacity: 1, filter: "blur(0px)" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ duration: 0.45, ease }}
       >
         {/* ambient light */}
@@ -231,6 +196,7 @@ export function WhatHappenedPlayer({
               </motion.span>
             </AnimatePresence>
             <span className="num whitespace-nowrap rounded-full bg-card px-3 py-1.5 text-[12.5px] font-semibold text-mute shadow-card" aria-live="polite">{index + 1} / {scenes.length}</span>
+            <DownloadSlidesButton scenes={scenes} month={month} compact onBefore={() => setPlaying(false)} />
             <button onClick={onClose} aria-label="Exit briefing (Escape)" className="grid size-10 place-items-center rounded-full bg-card text-mute shadow-card transition hover:text-ink hover:shadow-pop"><X className="size-4" /></button>
           </div>
         </div>
@@ -297,72 +263,6 @@ export function WhatHappenedPlayer({
       </motion.div>
     </MotionConfig>,
     document.body,
-  );
-}
-
-/** Arranges narration and visual for a layout. Text is never pinned to one side for the whole story. */
-function Layout({ layout, text, visual, map }: { layout: SceneLayout; text: ReactNode; visual: ReactNode; map: boolean }) {
-  if (layout === "top")
-    return (
-      <div className="flex h-full flex-col gap-6 pt-2 lg:gap-8">
-        {text}
-        <div className={cn("flex min-h-0 flex-1 justify-center", map ? "items-end pb-2" : "items-center")}><div className="w-full max-w-[1180px]">{visual}</div></div>
-      </div>
-    );
-  if (layout === "bottom")
-    return (
-      <div className="flex h-full flex-col gap-6 lg:gap-8">
-        <div className="flex min-h-0 flex-1 items-center justify-center pt-2"><div className="w-full max-w-[1180px]">{visual}</div></div>
-        {text}
-      </div>
-    );
-  return (
-    <div className={cn("grid h-full items-center gap-8 lg:gap-14", layout === "right" ? "lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.85fr)]" : "lg:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.5fr)]")}>
-      {layout === "right" ? (
-        <>
-          <div className={cn("order-2 flex h-full min-h-0 lg:order-1", map ? "items-end pb-4" : "items-center")}>{visual}</div>
-          <div className="order-1 lg:order-2">{text}</div>
-        </>
-      ) : (
-        <>
-          <div>{text}</div>
-          <div className="flex h-full min-h-0 items-center">{visual}</div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function SceneText({ scene, layout, wide }: { scene: StoryScene; layout: SceneLayout; wide: boolean }) {
-  const chip = (
-    <motion.div variants={textV} custom={layout} className="flex items-center gap-2.5">
-      <span className={cn("h-[3px] w-8 rounded-full", scene.mode === "observed" ? "bs-gradient" : "bg-teal")} />
-      <span className={cn("text-[12px] font-semibold uppercase tracking-[0.16em]", scene.mode === "observed" ? "text-brand-2" : "text-teal")}>{scene.kicker}</span>
-    </motion.div>
-  );
-  const title = (
-    <motion.h2 variants={textV} custom={layout} className="mt-3 text-balance text-[32px] font-medium leading-[1.06] tracking-[-0.035em] sm:text-[46px]">
-      {scene.title}
-    </motion.h2>
-  );
-  const body = (
-    <motion.p variants={textV} custom={layout} className="max-w-[56ch] text-pretty text-[16.5px] leading-[1.65] text-ink-2 sm:text-[18px] [&_strong]:font-semibold [&_strong]:text-ink">
-      <RichText text={scene.body} />
-    </motion.p>
-  );
-  if (wide)
-    return (
-      <div className="grid items-end gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
-        <div>{chip}{title}</div>
-        {body}
-      </div>
-    );
-  return (
-    <div className={cn(layout === "right" && "lg:text-left")}>
-      {chip}
-      {title}
-      <div className="mt-5">{body}</div>
-    </div>
   );
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { animate, motion, useReducedMotion } from "motion/react";
+import { animate, motion } from "motion/react";
 
 interface GeoState {
   name: string;
@@ -55,10 +55,9 @@ type VB = [number, number, number, number];
  * geometry is redrawn as vectors on every frame: it stays sharp at any zoom (no bitmap scaling).
  */
 export const USStoryMap = memo(function USStoryMap({
-  states, zoom, frame, showLabels = true,
-}: { states: MapStateValue[]; zoom: string | null; frame: MapFrame; showLabels?: boolean }) {
+  states, zoom, frame, showLabels = true, instant = false, onReady,
+}: { states: MapStateValue[]; zoom: string | null; frame: MapFrame; showLabels?: boolean; instant?: boolean; onReady?: () => void }) {
   const geo = useGeo();
-  const reduced = useReducedMotion();
   const box = useRef<HTMLDivElement>(null);
   const svg = useRef<SVGSVGElement>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
@@ -102,7 +101,8 @@ export const USStoryMap = memo(function USStoryMap({
       current.current = v;
       svg.current?.setAttribute("viewBox", v.map((n) => n.toFixed(2)).join(" "));
     };
-    if (!from || reduced) {
+    // The camera always glides (it does not depend on the OS reduced motion setting); exports jump straight there.
+    if (!from || instant) {
       apply(to);
       setSettled(true);
       return;
@@ -116,7 +116,11 @@ export const USStoryMap = memo(function USStoryMap({
       onComplete: () => setSettled(true),
     });
     return () => ctl.stop();
-  }, [cam, reduced, zoom]);
+  }, [cam, instant, zoom]);
+
+  useEffect(() => {
+    if (settled && geo && cam) onReady?.();
+  }, [settled, geo, cam, onReady]);
 
   const px = cam?.s ?? 1; // screen pixels per map unit at the target camera
   const fs = 15 / px;

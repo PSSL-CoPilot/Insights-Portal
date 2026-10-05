@@ -2,7 +2,7 @@
  * Canonical story facts for a month. Every narrative, evidence panel and player scene reads its
  * figures from here (which reads the workbook backed model), so a number is derived exactly once.
  */
-import type { AgencySnapshotRow, DataModel, DriverRow, ForecastStateRow, InterventionRow, MonthKey, RepCohortRow } from "../data/types";
+import type { AgencySnapshotRow, DataModel, DriverRow, ForecastStateRow, InterventionRow, MonthKey, RepCohortRow, SegmentRow } from "../data/types";
 import { diagnose, type Diagnosis } from "../data/narratives";
 import {
   AGENCY_GAP_THRESHOLD, assess, channelRows, excessCancels, getSnapshot, kpiById, prevMonth, reasonStats, stateRows,
@@ -63,6 +63,8 @@ export interface StoryFacts {
   riskyOrders: { channels: string[]; orders: number | null; projected: number | null; rate: number | null };
   /** Share of the deteriorating agencies' sales made by Critical band representatives. */
   criticalRepShare: number | null;
+  /** Delivery risk segmentation (cancellation risk x customer value x ODD x permit / construction readiness). */
+  highValue: { total: number | null; accelerate: SegmentRow | null; resetOdd: SegmentRow | null; handOff: SegmentRow | null; standard: SegmentRow | null };
 }
 
 const cache = new WeakMap<DataModel, Map<MonthKey, StoryFacts>>();
@@ -161,6 +163,7 @@ export function storyFacts(model: DataModel, month: MonthKey): StoryFacts {
     forecastOthers: hasStory ? range(st.forecastStates.filter((r) => !r.isTotal && r.state !== focus!.state).map((r) => r.rate)) : null,
     interventions,
     riskyOrders: { channels: [], orders: null, projected: null, rate: null },
+    highValue: { total: null, accelerate: null, resetOdd: null, handOff: null, standard: null },
     criticalRepShare: null,
     contactRisk: {
       orders: hasStory ? st.contactRisk[0]?.value ?? null : null,
@@ -175,6 +178,12 @@ export function storyFacts(model: DataModel, month: MonthKey): StoryFacts {
     const reps = st.reps.filter((r) => weakNames.has(r.agency));
     const total = reps.reduce((a, r) => a + (r.sales ?? 0), 0);
     f.criticalRepShare = total ? reps.filter((r) => /critical/i.test(r.band)).reduce((a, r) => a + (r.sales ?? 0), 0) / total : null;
+    const segs = st.segments.filter((x) => !x.isTotal);
+    const pick = (re: RegExp) => segs.find((x) => re.test(x.action)) ?? null;
+    f.highValue = {
+      total: st.segments.find((x) => x.isTotal)?.orders ?? (segs.length ? segs.reduce((a, x) => a + (x.orders ?? 0), 0) : null),
+      accelerate: pick(/accelerat/i), resetOdd: pick(/reset|escalat/i), handOff: pick(/contact rescue|hand/i), standard: pick(/maintain|monitor/i),
+    };
   }
   byMonth.set(month, f);
   return f;
