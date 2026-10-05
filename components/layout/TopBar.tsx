@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Bell, ChevronDown, Moon, PanelLeft, Sun } from "lucide-react";
 import { useApp } from "../AppContext";
 import { AskAnything } from "../ai/AskAnything";
+import { ProfileMenu } from "./ProfileMenu";
 import { MORE, NAV, BrandMark } from "./Sidebar";
 import { monthLabel } from "@/lib/format";
 import { analysisHref } from "@/lib/story/links";
@@ -99,9 +100,7 @@ export function TopBar() {
             <Bell className="size-[17px]" />
             <span className="absolute right-2.5 top-2.5 size-2 rounded-full border-2 border-card bg-bad" />
           </button>
-          <div className="bs-gradient hidden size-11 place-items-center rounded-full text-[13px] font-bold text-white shadow-[0_8px_20px_-8px_rgba(242,106,54,0.8)] sm:grid" title="Executive view">
-            EX
-          </div>
+          <ProfileMenu />
         </div>
       </div>
     </header>

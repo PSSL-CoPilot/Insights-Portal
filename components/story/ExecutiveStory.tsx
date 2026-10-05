@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowDown, ArrowRight, Play, Zap } from "lucide-react";
 import { GenieMark } from "../ui/Marks";
 import { useApp } from "../AppContext";
+import { firstName, useProfile } from "../profile";
 import { Badge, Card } from "../ui/primitives";
 import { Sparkline } from "../ui/Sparkline";
 import { NarrativeList } from "./NarrativeList";
@@ -28,6 +29,7 @@ export function ExecutiveStory() {
   const story = useMemo(() => buildExecutiveNarrative(model, month), [model, month]);
   const scenes = useMemo(() => buildStoryScenes(model, month), [model, month]);
   const f = storyFacts(model, month);
+  const profile = useProfile();
   const [playing, setPlaying] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const closePlayer = useCallback(() => setPlaying(false), []);
@@ -65,7 +67,10 @@ export function ExecutiveStory() {
               )}
             </div>
 
-            <h2 id="exec-summary" className="mt-6 max-w-4xl text-[30px] font-medium leading-[1.12] tracking-[-0.03em] sm:text-[40px]">{story.headline}</h2>
+            <h2 id="exec-summary" className="mt-6 max-w-4xl text-[30px] font-medium leading-[1.12] tracking-[-0.03em] sm:text-[40px]">
+              <span className="bs-gradient-text block pb-1">Hey {firstName(profile.name) || "there"},</span>
+              {story.headline}
+            </h2>
 
             <NarrativeList points={story.points} resetKey={month} className="mt-8" />
 
