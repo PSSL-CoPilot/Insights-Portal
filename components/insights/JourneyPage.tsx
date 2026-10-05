@@ -50,7 +50,7 @@ export function JourneyPage() {
                 <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: l.hot ? "#FFC72C" : undefined }}>
                   <span className="size-2.5 rounded-full" style={{ background: l.color }} />{l.label}
                 </div>
-                <div className="num mt-3 text-[30px] font-semibold leading-none">{fmtCompact(l.n)}</div>
+                <div className="num-display mt-3 text-[30px] leading-none">{fmtCompact(l.n)}</div>
                 <div className={cn("mt-1 text-xs", l.hot ? "text-white/60" : "text-mute")}>{l.sub}</div>
                 {l.label !== "Order placed" && s.sales ? <div className={cn("num mt-2 text-xs font-semibold", l.hot ? "text-brand" : "text-mute")}>{fmtPct((l.n ?? 0) / s.sales)} of sales</div> : null}
               </div>
@@ -84,7 +84,7 @@ export function JourneyPage() {
                   </span>
                   <span className="num mt-1.5 hidden text-[11px] font-semibold text-mute sm:block">{fmtDate(st.date)}</span>
                 </div>
-                <div className={cn("rounded-[18px] border bg-card p-4 shadow-card transition hover:shadow-pop sm:p-5", last && "border-bad/40 bg-bad-soft")}>
+                <div className={cn("rounded-[22px] border bg-card p-4 shadow-card transition hover:shadow-pop sm:p-5", last && "border-bad/40 bg-bad-soft")}>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="num text-xs font-semibold text-mute sm:hidden">{fmtDate(st.date)}</span>
                     <span className="eyebrow">Step {st.step}</span>

@@ -44,7 +44,7 @@ export function InsightsPage() {
       )}
 
       {model.executiveQuestions.length > 0 && (
-        <details className="group rounded-[18px] border border-line bg-card shadow-card" open={false}>
+        <details className="group rounded-[22px] border border-line bg-card shadow-card" open={false}>
           <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
             <div>
               <div className="eyebrow mb-1">Executive questions</div>

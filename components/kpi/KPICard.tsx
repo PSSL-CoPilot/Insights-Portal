@@ -47,7 +47,7 @@ export function KPICard({
       onClick={onClick}
       style={{ animationDelay: `${delay}ms` }}
       className={cn(
-        "group relative flex min-h-[158px] animate-rise flex-col justify-between overflow-hidden rounded-[18px] border p-4 text-left shadow-card transition-transform duration-300 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-1 hover:shadow-pop focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
+        "group relative flex min-h-[158px] animate-rise flex-col justify-between overflow-hidden rounded-[22px] border p-4 text-left shadow-card transition-transform duration-300 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-1 hover:shadow-pop focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
         spotlight ? "border-panel bg-panel text-white" : a.status === "critical" ? "border-bad/40 bg-card" : "border-line bg-card hover:border-soft",
         selected && "ring-2 ring-brand",
         unavailable && "opacity-70",
@@ -66,7 +66,7 @@ export function KPICard({
 
       <div className="relative mt-2 flex items-end justify-between gap-2">
         <div>
-          <div className="num text-[34px] font-semibold leading-none tracking-tight">{formatCompactKpi(def, value)}</div>
+          <div className="num-display text-[34px] leading-none tracking-tight">{formatCompactKpi(def, value)}</div>
           {companion !== null && (
             <div className={cn("mt-1.5 text-[11px]", spotlight ? "text-white/60" : "text-mute")}>
               {fmtInt(companion)} <span className="opacity-80">{def.companion!.label.replace(/ cancels$/i, "")}</span>

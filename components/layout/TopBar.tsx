@@ -16,7 +16,7 @@ function Select({ value, onChange, children, label, className }: { value: string
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 w-full cursor-pointer appearance-none rounded-full border border-line bg-card pl-4 pr-9 text-[13px] font-semibold text-ink shadow-card outline-none transition hover:border-ink focus:border-ink focus:ring-4 focus:ring-brand/30"
+        className="h-11 w-full cursor-pointer appearance-none rounded-full border border-white/90 bg-card pl-5 pr-10 text-[13px] font-semibold text-ink shadow-card outline-none transition hover:shadow-pop focus:ring-4 focus:ring-brand/30 dark:border-white/[0.06]"
       >
         {children}
       </select>
@@ -39,7 +39,7 @@ function ThemeToggle() {
   };
   return (
     <button onClick={toggle} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} title={dark ? "Light mode" : "Dark mode"}
-      className="grid size-10 place-items-center rounded-full border border-line bg-card text-mute shadow-card transition hover:border-ink hover:text-ink">
+      className="grid size-11 place-items-center rounded-full border border-white/90 bg-card text-mute shadow-card transition hover:text-ink hover:shadow-pop dark:border-white/[0.06]">
       {dark ? <Sun className="size-[17px] text-brand" /> : <Moon className="size-[17px]" />}
     </button>
   );
@@ -59,15 +59,18 @@ export function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 border-b border-line/70 bg-canvas/95">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-3 sm:px-8 lg:h-[76px] lg:flex-nowrap lg:py-0">
+    <header className="sticky top-0 z-30 bg-gradient-to-b from-canvas via-canvas/95 to-canvas/0 pb-2">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-3 sm:px-8 lg:h-[84px] lg:flex-nowrap lg:py-0">
         <div className="flex items-center gap-3 lg:min-w-[190px]">
           <span className="lg:hidden"><BrandMark size={30} /></span>
           <button onClick={toggleSidebar} aria-label="Toggle navigation" title="Collapse or expand the navigation"
-            className="hidden size-9 place-items-center rounded-xl text-mute transition-colors hover:bg-card hover:text-ink lg:grid">
+            className="hidden size-10 place-items-center rounded-full text-mute transition-colors hover:bg-card hover:text-ink lg:grid">
             <PanelLeft className="size-[18px]" />
           </button>
-          <h1 className="whitespace-nowrap text-[20px] font-semibold tracking-tight">{title}</h1>
+          <div className="leading-tight">
+            <h1 className="whitespace-nowrap text-[22px] font-semibold tracking-[-0.02em]">{title}</h1>
+            <div className="mt-0.5 hidden text-[12px] text-mute sm:block">Cancellation intelligence · {monthLabel(month)}</div>
+          </div>
         </div>
 
         <div className="order-3 flex w-full justify-center lg:order-none lg:flex-1">
@@ -91,11 +94,11 @@ export function TopBar() {
             ))}
           </Select>
           <ThemeToggle />
-          <button aria-label="Notifications" className="relative hidden size-10 place-items-center rounded-full border border-line bg-card text-mute shadow-card transition hover:border-ink hover:text-ink sm:grid">
+          <button aria-label="Notifications" className="relative hidden size-11 place-items-center rounded-full border border-white/90 bg-card text-mute shadow-card transition hover:text-ink hover:shadow-pop dark:border-white/[0.06] sm:grid">
             <Bell className="size-[17px]" />
             <span className="absolute right-2.5 top-2.5 size-2 rounded-full border-2 border-card bg-bad" />
           </button>
-          <div className="bs-gradient hidden size-10 place-items-center rounded-full text-[13px] font-bold text-[#111] sm:grid" title="Executive view">
+          <div className="bs-gradient hidden size-11 place-items-center rounded-full text-[13px] font-bold text-white shadow-[0_8px_20px_-8px_rgba(242,106,54,0.8)] sm:grid" title="Executive view">
             EX
           </div>
         </div>

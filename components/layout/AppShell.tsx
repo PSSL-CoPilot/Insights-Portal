@@ -31,11 +31,11 @@ function DataBanner() {
 function MobileNav() {
   const path = usePathname();
   return (
-    <nav className="flex gap-1.5 overflow-x-auto border-b border-line bg-card px-4 py-2 lg:hidden" aria-label="Primary">
+    <nav className="flex gap-1.5 overflow-x-auto px-4 py-2 lg:hidden" aria-label="Primary">
       {[...NAV, ...MORE].map((n) => {
         const on = n.href === "/" ? path === "/" : path.startsWith(n.href) || (!!n.also && path.startsWith(n.also));
         return (
-          <Link key={n.href} href={n.href} className={cn("flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold", on ? "bg-panel text-white" : "bg-line-2 text-mute")}>
+          <Link key={n.href} href={n.href} className={cn("flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold", on ? "bs-gradient text-white" : "bg-card text-mute")}>
             <n.icon className="size-3.5" /> {n.label}
           </Link>
         );
@@ -50,7 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen">
       <Sidebar />
-      <div className={cn("min-h-screen transition-[padding] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]", sidebarCollapsed ? "lg:pl-[76px]" : "lg:pl-[244px]")}>
+      <div className={cn("min-h-screen transition-[padding] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]", sidebarCollapsed ? "lg:pl-[96px]" : "lg:pl-[280px]")}>
         <TopBar />
         <MobileNav />
         <DataBanner />

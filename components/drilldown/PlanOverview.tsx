@@ -12,6 +12,7 @@ import { fmtInt, fmtPct, fmtPct0, fmtSignedPct, monthLabel, monthName, stateSlug
 import { buildPlanNarrative } from "@/lib/story/narrative";
 import { NarrativeBlock } from "../story/NarrativeList";
 import { ChannelIcon } from "../story/ChannelIcon";
+import { SegmentBar } from "../charts/SegmentBar";
 
 const METRICS = [
   { id: "cancels", label: "Cancellations" },
@@ -81,12 +82,22 @@ function PlanSection({ kind, open }: { kind: PlanKind; open: (k: PlanKind, name:
               </div>
               <div className="mt-5 flex items-end justify-between">
                 <div>
-                  <div className="num text-[34px] font-semibold leading-none">{fmtInt(r.cancels)}</div>
+                  <div className="num-display text-[34px] leading-none">{fmtInt(r.cancels)}</div>
                   <div className="mt-1 text-xs text-mute">cancellations</div>
                 </div>
                 <div className={cn("num text-xl font-bold", up ? "text-bad" : down ? "text-good" : "text-mute")}>{fmtSignedPct(r.cancelsMoM)}</div>
               </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line-2 pt-3 text-center text-xs">
+              <SegmentBar
+                className="mt-4"
+                height={6}
+                legend={false}
+                segments={[
+                  { id: "pre", label: "Pre ODD", value: r.snapshot.prePct ?? null, color: "var(--color-slate-soft)" },
+                  { id: "on", label: "On ODD", value: r.snapshot.onPct ?? null, color: "#ffc72c" },
+                  { id: "post", label: "Post ODD", value: r.snapshot.postPct ?? null, color: "var(--color-bad)" },
+                ]}
+              />
+              <div className="mt-3 grid grid-cols-3 gap-2 border-t border-line-2 pt-3 text-center text-xs">
                 <div><div className="num text-[15px] font-semibold">{fmtPct(r.cancelRate)}</div><div className="text-mute">cancel rate</div></div>
                 <div><div className="num text-[15px] font-semibold">{fmtPct0(r.postPct)}</div><div className="text-mute">Post ODD</div></div>
                 <div><div className="num text-[15px] font-semibold">{fmtPct0(r.pendingPct)}</div><div className="text-mute">pending</div></div>

@@ -30,7 +30,7 @@ function GrowthCard({ model, scope, month }: { model: ReturnType<typeof useApp>[
   const spark = series(model, "cancels", scope).filter((p) => p.month <= month).map((p) => p.value);
   const tone = dirTone("down", a.delta?.value);
   return (
-    <div className={cn("flex min-h-[158px] flex-col justify-between rounded-[18px] border bg-card p-4 shadow-card", a.status === "critical" ? "border-bad/40" : "border-line")}>
+    <div className={cn("flex min-h-[158px] flex-col justify-between rounded-[22px] border bg-card p-4 shadow-card", a.status === "critical" ? "border-bad/40" : "border-line")}>
       <div className="text-[12px] font-semibold text-mute">Cancellation growth vs {pm ? monthName(pm) : "prior"}</div>
       <div className="flex items-end justify-between gap-2">
         <div className={cn("num text-[34px] font-semibold leading-none tracking-tight", tone === "bad" ? "text-bad" : tone === "good" ? "text-good" : "")}>{fmtSignedPct(a.delta?.value ?? null)}</div>
@@ -170,7 +170,7 @@ export function StateDrilldown({ scope }: { scope: string }) {
           <div className="grid gap-5 lg:grid-cols-[1fr_1.35fr]">
             <div className="flex flex-col justify-center rounded-2xl bg-panel p-6 text-white">
               <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/50">Post ODD share · {monthName(month)}</div>
-              <div className="num bs-gradient-text mt-2 text-[64px] font-semibold leading-none">{fmtPct0(cur.postPct)}</div>
+              <div className="num-display bs-gradient-text mt-2 text-[64px] leading-none">{fmtPct0(cur.postPct)}</div>
               <div className="mt-2 text-sm text-white/70">
                 {fmtInt(cur.postCancels)} of {fmtInt(cur.cancels)} cancellations after the Original Due Date
                 {prev?.postPct != null && <> · {fmtPct0(prev.postPct)} in {monthShort(pm!)}</>}
@@ -283,7 +283,7 @@ export function StateDrilldown({ scope }: { scope: string }) {
             <Card className="flex flex-col justify-center p-6">
               <div className="eyebrow mb-2">Pending Customer Contact</div>
               <div className="flex items-end gap-3">
-                <span className="num text-[52px] font-semibold leading-none">{fmtPct0(cur.pendingPct)}</span>
+                <span className="num-display text-[52px] leading-none">{fmtPct0(cur.pendingPct)}</span>
                 {prev?.pendingPct != null && cur.pendingPct !== null && <span className={cn("num pb-1.5 text-base font-bold", cur.pendingPct > prev.pendingPct ? "text-bad" : "text-good")}>{fmtPp(cur.pendingPct - prev.pendingPct)}</span>}
               </div>
               <div className="mt-2 text-sm text-mute">Portfolio: {fmtPct0(port.pendingPct)} · BSW Delay Predicted {fmtPct0(cur.bswPct)} · Install in Jeopardy {fmtPct0(cur.jeopardyPct)}</div>

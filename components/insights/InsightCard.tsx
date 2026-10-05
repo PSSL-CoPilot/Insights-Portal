@@ -16,7 +16,7 @@ export function InsightCard({ insight, index = 0 }: { insight: Insight; index?: 
           <SeverityBadge severity={insight.severity} />
           <div className="eyebrow mt-4">{insight.metric.label}</div>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="num text-[34px] font-semibold leading-none">{insight.metric.value}</span>
+            <span className="num-display text-[34px] leading-none">{insight.metric.value}</span>
             {insight.metric.delta && <span className={cn("num text-sm font-bold", insight.metric.tone === "bad" ? "text-bad" : insight.metric.tone === "good" ? "text-good" : "text-mute")}>{insight.metric.delta}</span>}
           </div>
         </div>

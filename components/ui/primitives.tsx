@@ -14,7 +14,7 @@ export function Card({ className, children, interactive, ...rest }: { className?
     <div
       {...rest}
       className={cn(
-        "rounded-[18px] border border-line bg-card shadow-card",
+        "rounded-[26px] border border-white/90 bg-card shadow-card dark:border-white/[0.06]",
         interactive && "transition-transform duration-300 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-1 hover:border-line hover:shadow-pop cursor-pointer",
         className,
       )}
@@ -122,7 +122,7 @@ export function Tabs<T extends string>({
   tabs, value, onChange, className, size = "md",
 }: { tabs: { id: T; label: string; hint?: string }[]; value: T; onChange: (t: T) => void; className?: string; size?: "sm" | "md" }) {
   return (
-    <div role="tablist" className={cn("inline-flex max-w-full flex-wrap gap-1 rounded-full border border-line bg-line-2 p-1", className)}>
+    <div role="tablist" className={cn("inline-flex max-w-full flex-wrap gap-1 rounded-full border border-line/70 bg-subtle p-1", className)}>
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -132,7 +132,7 @@ export function Tabs<T extends string>({
           className={cn(
             "rounded-full font-semibold transition-colors duration-200",
             size === "sm" ? "px-3 py-1 text-xs" : "px-4 py-1.5 text-[13px]",
-            value === t.id ? "bg-panel text-white shadow-sm" : "text-mute hover:text-ink",
+            value === t.id ? "bg-card text-ink shadow-[0_2px_10px_-3px_rgba(0,0,0,0.18)]" : "text-mute hover:text-ink",
           )}
         >
           {t.label}

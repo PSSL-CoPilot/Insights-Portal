@@ -11,6 +11,7 @@ import { CustomerMissDrivers } from "../charts/CustomerMissDrivers";
 import { WatchtowerSignals } from "../charts/WatchtowerSignals";
 import { RankedBars, type RankedRow } from "../charts/RankedBars";
 import { planRows } from "../charts/StateRanking";
+import { Donut } from "../charts/Donut";
 import { C, TipCard, axisProps } from "../charts/shared";
 import { cn } from "../ui/primitives";
 import { ChannelIcon } from "./ChannelIcon";
@@ -181,6 +182,8 @@ function Unavailable({ text }: { text: string }) {
   return <div className="py-6 text-center text-[13px] text-mute">{text}</div>;
 }
 
+const DRIVER_COLOR: Record<string, string> = { contact: "var(--color-bad)", sales: "#f5a524", company: "var(--color-slate-soft)", faux: "var(--color-line)" };
+
 function DriversEvidence() {
   const { model, month } = useApp();
   const f = storyFacts(model, month);
@@ -189,10 +192,28 @@ function DriversEvidence() {
   const pending = f.focusSnap?.pendingPct ?? null;
   return (
     <div className="space-y-3">
-      <RankedBars dense max={1} rows={parts.map((d) => ({
-        id: d.driver, label: d.driver, sub: d.interpretation, value: d.share, valueLabel: `${fmtInt(d.cancels)} · ${fmtPct0(d.share)}`,
-        color: d.kind === "contact" || d.kind === "sales" ? C.bad : C.slate, emphasis: d.kind === "contact" || d.kind === "sales",
-      }))} />
+      <div className="flex flex-wrap items-center gap-6">
+        <Donut
+          size={170}
+          thickness={22}
+          data={parts.map((d) => ({ name: d.driver, value: d.cancels ?? 0, color: DRIVER_COLOR[d.kind] ?? C.slate, detail: fmtInt(d.cancels) }))}
+          center={<div><div className="num-display text-[26px] leading-none">{fmtInt(parts.reduce((a, d) => a + (d.cancels ?? 0), 0))}</div><div className="mt-1 text-[10.5px] text-mute">cancellations</div></div>}
+        />
+        <ul className="min-w-[240px] flex-1 space-y-2.5">
+          {parts.map((d) => (
+            <li key={d.driver} className="flex items-start justify-between gap-3 text-[13px]">
+              <span className="flex min-w-0 gap-2.5">
+                <span className="mt-1.5 h-2.5 w-5 shrink-0 rounded-full" style={{ background: DRIVER_COLOR[d.kind] ?? C.slate }} />
+                <span className="min-w-0">
+                  <span className={d.kind === "contact" || d.kind === "sales" ? "font-semibold text-ink" : "text-ink-2"}>{d.driver}</span>
+                  <span className="block truncate text-[11.5px] text-mute">{d.interpretation}</span>
+                </span>
+              </span>
+              <span className="num shrink-0 font-semibold">{fmtInt(d.cancels)} · {fmtPct0(d.share)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
       {pending !== null && (
         <div className="rounded-xl border border-dashed border-line bg-card px-3 py-2.5 text-[12.5px] text-ink-2">
           <span className="font-semibold text-ink">Different measure:</span> {fmtPct0(pending)} of {f.focus?.state} cancellations carried a Pending Customer Contact <em>signal</em>. A status, not the primary cause, so it does not add to the shares above.

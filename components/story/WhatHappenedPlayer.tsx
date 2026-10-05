@@ -1,25 +1,72 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion, MotionConfig, useMotionValue } from "motion/react";
-import { Pause, Play, RotateCcw, SkipBack, SkipForward, X, Zap, ArrowRight } from "lucide-react";
+import { AnimatePresence, motion, MotionConfig, useMotionValue, type Variants } from "motion/react";
+import { ArrowRight, Pause, Play, RotateCcw, SkipBack, SkipForward, X, Zap } from "lucide-react";
 import { GenieMark } from "../ui/Marks";
 import { cn, RichText } from "../ui/primitives";
-import { USStoryMap } from "./USStoryMap";
+import { USStoryMap, type MapFrame } from "./USStoryMap";
 import { SceneVisualView } from "./SceneVisual";
-import type { StoryScene } from "@/lib/story/types";
+import type { SceneLayout, StoryScene } from "@/lib/story/types";
 import type { MonthKey } from "@/lib/data/types";
 import { monthLabel, stateSlug } from "@/lib/format";
 
-const ease = [0.2, 0.8, 0.2, 1] as const;
+const ease = [0.22, 0.9, 0.24, 1] as const;
+const NARROW_FRAME: MapFrame = { x0: 0.03, x1: 0.97, y0: 0.42, y1: 0.86 };
+
+function useWide() {
+  const [wide, setWide] = useState(true);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const on = () => setWide(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return wide;
+}
+
+const EDGE_FADE = "linear-gradient(to bottom, transparent 0%, #000 7%, #000 90%, transparent 100%), linear-gradient(to right, transparent 0%, #000 4%, #000 96%, transparent 100%)";
+
+/** Where the map subject sits for each narration layout (fractions of the stage). */
+const MAP_FRAME: Record<SceneLayout, MapFrame> = {
+  top: { x0: 0.06, x1: 0.94, y0: 0.27, y1: 0.86 },
+  bottom: { x0: 0.06, x1: 0.94, y0: 0.03, y1: 0.64 },
+  right: { x0: 0.02, x1: 0.58, y0: 0.06, y1: 0.92 },
+  left: { x0: 0.42, x1: 0.98, y0: 0.06, y1: 0.92 },
+};
+
+/** Entry direction of the narration for each layout; exits drift the other way. All with motion blur. */
+const OFFSET: Record<SceneLayout, { x: number; y: number }> = {
+  top: { x: 0, y: -28 },
+  bottom: { x: 0, y: 28 },
+  right: { x: 36, y: 0 },
+  left: { x: -36, y: 0 },
+};
+
+const frameV: Variants = {
+  enter: { transition: { staggerChildren: 0.09, delayChildren: 0.2 } },
+  exit: { transition: { staggerChildren: 0.04, staggerDirection: -1 } },
+};
+const textV: Variants = {
+  initial: (l: SceneLayout) => ({ opacity: 0, x: OFFSET[l].x, y: OFFSET[l].y, filter: "blur(14px)" }),
+  enter: { opacity: 1, x: 0, y: 0, filter: "blur(0px)", transition: { duration: 0.7, ease } },
+  exit: (l: SceneLayout) => ({ opacity: 0, x: -OFFSET[l].x * 0.5, y: -OFFSET[l].y * 0.5, filter: "blur(10px)", transition: { duration: 0.35, ease: [0.4, 0, 1, 1] } }),
+};
+const visualV: Variants = {
+  initial: { opacity: 0, scale: 0.965, y: 18, filter: "blur(12px)" },
+  enter: { opacity: 1, scale: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.75, ease } },
+  exit: { opacity: 0, scale: 0.985, y: -10, filter: "blur(10px)", transition: { duration: 0.35, ease: [0.4, 0, 1, 1] } },
+};
 
 /**
- * Full-screen guided briefing. Scenes come from `buildStoryScenes`; the map stays mounted for the
- * whole story so the camera moves continuously from the footprint into the focus state and stays
- * there (dimmed) behind the later evidence. Autoplay timing runs on requestAnimationFrame and
- * writes to a motion value, so the progress rail animates without re-rendering React.
+ * Full-screen guided briefing that follows the app theme (light or dark). Scenes come from
+ * `buildStoryScenes`; each carries a layout so the narration moves around the visual. The map stays
+ * mounted for the whole story and its camera animates the SVG viewBox, so it is sharp at any zoom.
+ * Autoplay runs on requestAnimationFrame and writes to a motion value: the progress rail animates
+ * without re-rendering React.
  */
 export function WhatHappenedPlayer({
   scenes, month, onClose, onTakeAction,
@@ -35,15 +82,16 @@ export function WhatHappenedPlayer({
   const scene = scenes[index];
   const last = index === scenes.length - 1;
 
-  // Map state: the first map scene's states, and the zoom target once the story reaches it.
+  // Map: fills from the current (or latest earlier) map scene, zoom once the story reaches it.
   const mapScenes = useMemo(() => scenes.map((s, i) => ({ s, i })).filter((x) => x.s.visual.kind === "map"), [scenes]);
-  // The current map scene (or the last one before it) decides the fills, so the focus state turns red on cue.
   const activeMap = [...mapScenes].reverse().find((x) => x.i <= index) ?? mapScenes[0];
   const mapStates = activeMap?.s.visual.kind === "map" ? activeMap.s.visual.states : [];
-  const zoomAt = mapScenes.find((x) => x.s.visual.kind === "map" && x.s.visual.zoom);
-  const zoom = zoomAt && index >= zoomAt.i && zoomAt.s.visual.kind === "map" ? zoomAt.s.visual.zoom : null;
+  const zoom = activeMap?.s.visual.kind === "map" ? activeMap.s.visual.zoom : null;
   const isMapScene = scene.visual.kind === "map";
-  const mapOpacity = isMapScene ? 1 : scene.mode === "preventive" ? 0.07 : 0.16;
+  const wide = useWide();
+  // On narrow screens the narration stacks above the visual, so the map always sits in the lower stage.
+  const frame = wide ? MAP_FRAME[activeMap?.s.layout ?? "top"] : NARROW_FRAME;
+  const mapOpacity = isMapScene ? 1 : scene.mode === "preventive" ? 0.05 : 0.08;
 
   // ---- timeline
   useEffect(() => {
@@ -115,20 +163,30 @@ export function WhatHappenedPlayer({
     };
   }, [onClose, toggle, next, prevScene, replay]);
 
-  const focusState = zoomAt && zoomAt.s.visual.kind === "map" ? zoomAt.s.visual.zoom : null;
+  const focusState = mapScenes.map((x) => (x.s.visual.kind === "map" ? x.s.visual.zoom : null)).find(Boolean) ?? null;
   const evidenceHref = focusState ? `/states/${stateSlug(focusState)}?month=${month}` : `/cancellations?month=${month}`;
   const endActions = (
     <div className="flex flex-wrap gap-2.5">
-      <button onClick={onTakeAction} className="bs-gradient inline-flex h-11 items-center gap-2 rounded-full px-5 text-[14px] font-semibold text-[#111] transition-transform hover:-translate-y-0.5">
+      <button onClick={onTakeAction} className="bs-gradient inline-flex h-12 items-center gap-2 rounded-full px-6 text-[14.5px] font-semibold text-white shadow-[0_12px_28px_-12px_rgba(242,106,54,0.9)] transition-transform hover:-translate-y-0.5">
         <Zap className="size-4" /> Take Action
       </button>
-      <button onClick={() => { onClose(); router.push(evidenceHref); }} className="inline-flex h-11 items-center gap-2 rounded-full border border-white/20 px-5 text-[14px] font-semibold text-white transition hover:border-white/60">
+      <button onClick={() => { onClose(); router.push(evidenceHref); }} className="inline-flex h-12 items-center gap-2 rounded-full border border-line bg-card px-6 text-[14.5px] font-semibold text-ink shadow-card transition hover:shadow-pop">
         See full evidence <ArrowRight className="size-4" />
       </button>
-      <button onClick={replay} className="inline-flex h-11 items-center gap-2 rounded-full px-4 text-[14px] font-semibold text-white/70 transition hover:text-white">
+      <button onClick={replay} className="inline-flex h-12 items-center gap-2 rounded-full px-4 text-[14.5px] font-semibold text-mute transition hover:text-ink">
         <RotateCcw className="size-4" /> Replay story
       </button>
     </div>
+  );
+
+  const l = scene.layout;
+  const text = (
+    <SceneText scene={scene} layout={l} wide={l === "top" || l === "bottom"} />
+  );
+  const visual = (
+    <motion.div variants={visualV} className={cn("min-h-0 w-full", isMapScene && (l === "top" ? "self-end" : l === "right" ? "self-end" : ""))}>
+      <SceneVisualView visual={scene.visual} actions={last ? endActions : undefined} />
+    </motion.div>
   );
 
   return createPortal(
@@ -138,101 +196,82 @@ export function WhatHappenedPlayer({
         role="dialog"
         aria-modal="true"
         aria-label={`What happened, ${monthLabel(month)}`}
-        className="dark fixed inset-0 z-[60] flex flex-col overflow-hidden text-white"
-        style={{ background: "radial-gradient(1100px 600px at 80% -10%, rgba(255,199,44,0.10), transparent 60%), radial-gradient(900px 500px at 0% 110%, rgba(79,199,192,0.08), transparent 60%), #0a0f1c" }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
+        className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-canvas text-ink"
+        initial={{ opacity: 0, filter: "blur(8px)" }}
+        animate={{ opacity: 1, filter: "blur(0px)" }}
+        transition={{ duration: 0.45, ease }}
       >
+        {/* ambient light */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-40 -top-40 size-[720px] rounded-full opacity-70" style={{ background: "radial-gradient(circle, rgba(255,170,110,0.22), transparent 65%)" }} />
+          <div className="absolute -right-40 top-10 size-[640px] rounded-full opacity-60" style={{ background: "radial-gradient(circle, rgba(255,214,102,0.16), transparent 65%)" }} />
+          <div className="absolute -bottom-60 left-1/3 size-[700px] rounded-full opacity-60" style={{ background: "radial-gradient(circle, rgba(79,199,192,0.10), transparent 65%)" }} />
+        </div>
+
         {/* header */}
-        <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-8">
+        <div className="relative flex items-center justify-between gap-4 px-5 py-4 sm:px-10 sm:py-5">
           <div className="flex items-center gap-3">
-            <GenieMark size={26} />
+            <GenieMark size={34} />
             <div>
-              <div className="text-[14px] font-semibold">What happened</div>
-              <div className="text-[11.5px] text-white/50">{monthLabel(month)} briefing</div>
+              <div className="text-[15px] font-semibold tracking-tight">What happened</div>
+              <div className="text-[12px] text-mute">{monthLabel(month)} briefing</div>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className={cn("rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] transition-colors duration-500", scene.mode === "observed" ? "bg-white/10 text-white/80" : "bg-[#4fc7c0]/20 text-[#7fe0d9]")}>
-              {scene.mode === "observed" ? "Observed" : "Forward-looking"}
-            </span>
-            <span className="num text-[12.5px] text-white/50" aria-live="polite">{index + 1} / {scenes.length}</span>
-            <button onClick={onClose} aria-label="Exit briefing (Escape)" className="grid size-9 place-items-center rounded-full border border-white/15 text-white/70 transition hover:border-white/50 hover:text-white"><X className="size-4" /></button>
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span
+                key={scene.mode}
+                initial={{ opacity: 0, y: -8, filter: "blur(4px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: 8, filter: "blur(4px)" }}
+                className={cn("rounded-full px-3 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em]", scene.mode === "observed" ? "bg-observed-soft text-observed" : "bg-teal-soft text-teal")}
+              >
+                {scene.mode === "observed" ? "Observed" : "Forward-looking"}
+              </motion.span>
+            </AnimatePresence>
+            <span className="num whitespace-nowrap rounded-full bg-card px-3 py-1.5 text-[12.5px] font-semibold text-mute shadow-card" aria-live="polite">{index + 1} / {scenes.length}</span>
+            <button onClick={onClose} aria-label="Exit briefing (Escape)" className="grid size-10 place-items-center rounded-full bg-card text-mute shadow-card transition hover:text-ink hover:shadow-pop"><X className="size-4" /></button>
           </div>
         </div>
 
-        {/* body */}
-        <div className="grid min-h-0 flex-1 gap-6 overflow-y-auto px-5 pb-4 sm:px-8 lg:grid-cols-[minmax(300px,0.8fr)_minmax(0,1.4fr)] lg:gap-10 lg:overflow-hidden">
-          <div className="flex flex-col justify-center lg:py-6">
-            <AnimatePresence mode="wait">
+        {/* stage */}
+        <div className="relative min-h-0 flex-1">
+          <motion.div
+            aria-hidden={!isMapScene}
+            className="pointer-events-none absolute inset-0"
+            style={{ maskImage: EDGE_FADE, WebkitMaskImage: EDGE_FADE, maskComposite: "intersect", WebkitMaskComposite: "source-in" }}
+            initial={false}
+            animate={{ opacity: mapOpacity }}
+            transition={{ duration: 0.9, ease }}
+          >
+            <USStoryMap key={run} states={mapStates} zoom={zoom} frame={frame} showLabels={isMapScene} />
+          </motion.div>
+
+          <div className="relative h-full">
+            <AnimatePresence custom={l}>
               <motion.div
                 key={`${scene.id}-${run}`}
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.45, ease }}
+                custom={l}
+                variants={frameV}
+                initial="initial"
+                animate="enter"
+                exit="exit"
+                className="absolute inset-0 overflow-y-auto px-5 pb-4 sm:px-10 lg:overflow-hidden"
               >
-                <div className={cn("text-[12px] font-semibold uppercase tracking-[0.14em]", scene.mode === "observed" ? "text-[#ffc72c]" : "text-[#7fe0d9]")}>{scene.kicker}</div>
-                <h2 className="mt-3 text-[30px] font-semibold leading-[1.12] tracking-[-0.02em] sm:text-[38px]">{scene.title}</h2>
-                <p className="mt-5 max-w-xl text-[16.5px] leading-[1.6] text-white/75 [&_strong]:text-white">
-                  <RichText text={scene.body} />
-                </p>
+                <Layout layout={l} text={text} visual={visual} map={isMapScene} />
               </motion.div>
             </AnimatePresence>
-          </div>
-
-          <div className="relative min-h-[360px] lg:min-h-0" style={{ containerType: "size" }}>
-            {/* persistent map layer */}
-            <motion.div
-              aria-hidden={!isMapScene}
-              className="pointer-events-none absolute inset-0 flex items-start justify-center overflow-hidden pt-1"
-              style={{ maskImage: "radial-gradient(ellipse 75% 70% at 50% 42%, #000 60%, transparent 100%)", WebkitMaskImage: "radial-gradient(ellipse 75% 70% at 50% 42%, #000 60%, transparent 100%)" }}
-              initial={false}
-              animate={{ opacity: mapOpacity }}
-              transition={{ duration: 0.8, ease }}
-            >
-              {/* Same size in every scene (no layout jumps): the camera is the only thing that moves. */}
-              <div className="shrink-0" style={{ width: "min(100cqw, calc(76cqh * 975 / 610))" }}>
-                <USStoryMap states={mapStates} zoom={zoom} showLabels={isMapScene} key={run} />
-              </div>
-            </motion.div>
-            {/* scene visual layer */}
-            <div className={cn("relative z-[1] flex h-full flex-col overflow-y-auto", isMapScene ? "justify-end" : "justify-center")}>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={`${scene.id}-${run}`}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.45, ease }}
-                  className="py-2"
-                >
-                  <SceneVisualView visual={scene.visual} actions={last ? endActions : undefined} />
-                </motion.div>
-              </AnimatePresence>
-            </div>
           </div>
         </div>
 
         {/* progress rail and controls */}
-        <div className="border-t border-white/10 px-5 pb-5 pt-4 sm:px-8">
+        <div className="relative px-5 pb-5 pt-3 sm:px-10">
           <div className="flex gap-1.5" role="tablist" aria-label="Story scenes">
             {scenes.map((s, i) => (
-              <button
-                key={s.id}
-                role="tab"
-                aria-selected={i === index}
-                aria-label={`Scene ${i + 1}: ${s.title}`}
-                title={s.kicker}
-                onClick={() => go(i)}
-                className="group relative h-6 flex-1"
-              >
-                <span className={cn("absolute inset-x-0 top-1/2 h-[5px] -translate-y-1/2 overflow-hidden rounded-full transition-colors", s.mode === "observed" ? "bg-white/12 group-hover:bg-white/25" : "bg-[#4fc7c0]/15 group-hover:bg-[#4fc7c0]/30")}>
-                  {i < index && <span className={cn("absolute inset-0", s.mode === "observed" ? "bg-white/80" : "bg-[#4fc7c0]")} />}
-                  {i === index && (
-                    <motion.span className={cn("absolute inset-0 origin-left", s.mode === "observed" ? "bg-white" : "bg-[#4fc7c0]")} style={{ scaleX: progress }} />
-                  )}
+              <button key={s.id} role="tab" aria-selected={i === index} aria-label={`Scene ${i + 1}: ${s.title}`} title={s.kicker} onClick={() => go(i)} className="group relative h-6 flex-1">
+                <span className="absolute inset-x-0 top-1/2 h-[5px] -translate-y-1/2 overflow-hidden rounded-full bg-line transition-colors group-hover:bg-soft/50">
+                  {i < index && <span className={cn("absolute inset-0", s.mode === "observed" ? "bg-ink/80" : "bg-teal")} />}
+                  {i === index && <motion.span className={cn("absolute inset-0 origin-left", s.mode === "observed" ? "bg-ink" : "bg-teal")} style={{ scaleX: progress }} />}
                 </span>
               </button>
             ))}
@@ -244,14 +283,14 @@ export function WhatHappenedPlayer({
                 ref={playBtn}
                 onClick={toggle}
                 aria-label={playing ? "Pause (Space)" : "Play (Space)"}
-                className="grid size-12 place-items-center rounded-full bg-white text-[#0a0f1c] shadow-pop transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffc72c]"
+                className="grid size-12 place-items-center rounded-full bg-ink text-canvas shadow-pop transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
               >
                 {playing ? <Pause className="size-5 fill-current" /> : <Play className="size-5 translate-x-[1px] fill-current" />}
               </button>
               <CtrlButton label="Next scene (Right arrow)" onClick={next} disabled={last}><SkipForward className="size-4" /></CtrlButton>
               <CtrlButton label="Replay from the start" onClick={replay}><RotateCcw className="size-4" /></CtrlButton>
             </div>
-            <div className="hidden text-[11.5px] text-white/40 sm:block">Space play or pause · Arrows move between scenes · Esc exits</div>
+            <div className="hidden text-[12px] text-mute sm:block">Space play or pause · Arrows move between scenes · Esc exits</div>
           </div>
         </div>
       </motion.div>
@@ -260,14 +299,80 @@ export function WhatHappenedPlayer({
   );
 }
 
-function CtrlButton({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+/** Arranges narration and visual for a layout. Text is never pinned to one side for the whole story. */
+function Layout({ layout, text, visual, map }: { layout: SceneLayout; text: ReactNode; visual: ReactNode; map: boolean }) {
+  if (layout === "top")
+    return (
+      <div className="flex h-full flex-col gap-6 pt-2 lg:gap-8">
+        {text}
+        <div className={cn("flex min-h-0 flex-1 justify-center", map ? "items-end pb-2" : "items-center")}><div className="w-full max-w-[1180px]">{visual}</div></div>
+      </div>
+    );
+  if (layout === "bottom")
+    return (
+      <div className="flex h-full flex-col gap-6 lg:gap-8">
+        <div className="flex min-h-0 flex-1 items-center justify-center pt-2"><div className="w-full max-w-[1180px]">{visual}</div></div>
+        {text}
+      </div>
+    );
+  return (
+    <div className={cn("grid h-full items-center gap-8 lg:gap-14", layout === "right" ? "lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.85fr)]" : "lg:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.5fr)]")}>
+      {layout === "right" ? (
+        <>
+          <div className={cn("order-2 flex h-full min-h-0 lg:order-1", map ? "items-end pb-4" : "items-center")}>{visual}</div>
+          <div className="order-1 lg:order-2">{text}</div>
+        </>
+      ) : (
+        <>
+          <div>{text}</div>
+          <div className="flex h-full min-h-0 items-center">{visual}</div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function SceneText({ scene, layout, wide }: { scene: StoryScene; layout: SceneLayout; wide: boolean }) {
+  const chip = (
+    <motion.div variants={textV} custom={layout} className="flex items-center gap-2.5">
+      <span className={cn("h-[3px] w-8 rounded-full", scene.mode === "observed" ? "bs-gradient" : "bg-teal")} />
+      <span className={cn("text-[12px] font-semibold uppercase tracking-[0.16em]", scene.mode === "observed" ? "text-brand-2" : "text-teal")}>{scene.kicker}</span>
+    </motion.div>
+  );
+  const title = (
+    <motion.h2 variants={textV} custom={layout} className="mt-3 text-balance text-[32px] font-medium leading-[1.06] tracking-[-0.035em] sm:text-[46px]">
+      {scene.title}
+    </motion.h2>
+  );
+  const body = (
+    <motion.p variants={textV} custom={layout} className="max-w-[56ch] text-pretty text-[16.5px] leading-[1.65] text-ink-2 sm:text-[18px] [&_strong]:font-semibold [&_strong]:text-ink">
+      <RichText text={scene.body} />
+    </motion.p>
+  );
+  if (wide)
+    return (
+      <div className="grid items-end gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
+        <div>{chip}{title}</div>
+        {body}
+      </div>
+    );
+  return (
+    <div className={cn(layout === "right" && "lg:text-left")}>
+      {chip}
+      {title}
+      <div className="mt-5">{body}</div>
+    </div>
+  );
+}
+
+function CtrlButton({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: ReactNode }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
       title={label}
-      className="grid size-10 place-items-center rounded-full text-white/75 transition hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-[#ffc72c]"
+      className="grid size-11 place-items-center rounded-full text-mute transition hover:bg-card hover:text-ink hover:shadow-card disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none focus-visible:outline-2 focus-visible:outline-brand"
     >
       {children}
     </button>

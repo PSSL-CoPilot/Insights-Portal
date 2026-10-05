@@ -7,6 +7,7 @@ import { ArrowRight, ChevronRight, Radar } from "lucide-react";
 import { useApp } from "../AppContext";
 import { Badge, Card, cn, LinkButton, SectionTitle } from "../ui/primitives";
 import { C } from "../charts/shared";
+import { Donut } from "../charts/Donut";
 import { findHotspot, getSnapshot, prevMonth, reasonStats, watchSignals, type SignalRow } from "@/lib/data/metrics";
 import { fmtInt, fmtPct, fmtPct0, fmtPp, monthLabel, monthName, slugToState, stateSlug } from "@/lib/format";
 
@@ -53,11 +54,18 @@ export function WatchtowerPage() {
       ) : (
         <>
           {/* 1 · headline */}
-          <Card className="grid overflow-hidden md:grid-cols-[1fr_1.4fr]">
-            <div className="bg-panel p-6 text-white sm:p-8">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/50">Visible before cancellation</div>
-              <div className="num bs-gradient-text mt-3 text-[64px] font-semibold leading-none">{fmtPct0(flagged)}</div>
-              <div className="mt-3 text-[13.5px] text-white/70">of {monthName(month)} cancellations in {where} carried a Watchtower warning{cancels ? `: approximately ${fmtInt(Math.round(flagged * cancels))} of ${fmtInt(cancels)} orders` : ""}.</div>
+          <Card className="warm-wash grid overflow-hidden md:grid-cols-[1fr_1.4fr]">
+            <div className="flex flex-wrap items-center gap-6 p-6 sm:p-8">
+              <Donut
+                size={190}
+                thickness={24}
+                data={sig.filter((x) => x.pct !== null).map((x) => ({ name: x.label, value: x.pct as number, color: x.id === "noAction" ? "var(--color-line)" : x.id === strongest?.id ? "var(--color-bad)" : SIGNAL_META[x.id].tone, detail: fmtInt(x.count) }))}
+                center={<div><div className="num-display text-[40px] leading-none">{fmtPct0(flagged)}</div><div className="mt-1 text-[10.5px] font-medium text-mute">flagged early</div></div>}
+              />
+              <div className="min-w-[180px] flex-1">
+                <div className="eyebrow">Visible before cancellation</div>
+                <div className="mt-2 text-[13.5px] leading-relaxed text-ink-2">{fmtPct0(flagged)} of {monthName(month)} cancellations in {where} carried a Watchtower warning{cancels ? `: approximately ${fmtInt(Math.round(flagged * cancels))} of ${fmtInt(cancels)} orders` : ""}.</div>
+              </div>
             </div>
             <div className="flex flex-col justify-center gap-3 p-6 sm:p-8">
               <div className="flex items-center gap-2"><span className="bs-gradient grid size-8 place-items-center rounded-lg text-[#111]"><Radar className="size-4" /></span><span className="eyebrow">What the signals say</span></div>
@@ -92,7 +100,7 @@ export function WatchtowerPage() {
                     onClick={() => meta.kpi && openKpi(meta.kpi, "signals", scope)}
                     style={{ animationDelay: `${i * 60}ms` }}
                     className={cn(
-                      "relative flex h-full animate-rise flex-col overflow-hidden rounded-[18px] border p-5 text-left shadow-card transition",
+                      "relative flex h-full animate-rise flex-col overflow-hidden rounded-[22px] border p-5 text-left shadow-card transition",
                       meta.kpi && "hover:-translate-y-0.5 hover:shadow-pop",
                       key ? "border-panel bg-panel text-white" : "border-line bg-card",
                     )}
@@ -102,7 +110,7 @@ export function WatchtowerPage() {
                       <div className={cn("text-[12px] font-semibold leading-tight", key ? "text-white/70" : "text-mute")}>{s.label}</div>
                       {key && <Badge tone="brand" className="!px-1.5 !py-0 text-[9.5px]">LEADING</Badge>}
                     </div>
-                    <div className="num relative mt-2 text-[40px] font-semibold leading-none">{fmtPct0(s.pct)}</div>
+                    <div className="num-display relative mt-2 text-[40px] leading-none">{fmtPct0(s.pct)}</div>
                     <div className={cn("relative mt-2 text-xs", key ? "text-white/60" : "text-mute")}>
                       {s.count !== null ? `${fmtInt(s.count)} cancellations` : "n/a"}
                       {d !== null && Math.abs(d) >= 0.005 && <span className={cn("ml-2 font-bold", t === "bad" ? "text-bad" : t === "good" ? "text-good" : "")}>{fmtPp(d)}</span>}
@@ -230,7 +238,7 @@ function SignalStory({ storyState, onChange }: { storyState: string; onChange: (
               onClick={() => setActive(i)}
               aria-current={active === i}
               className={cn(
-                "flex h-full w-full flex-col rounded-[18px] border p-4 text-left shadow-card transition hover:-translate-y-0.5 hover:shadow-pop",
+                "flex h-full w-full flex-col rounded-[22px] border p-4 text-left shadow-card transition hover:-translate-y-0.5 hover:shadow-pop",
                 active === i ? "border-panel bg-panel text-white" : "border-line bg-card",
               )}
             >
@@ -238,7 +246,7 @@ function SignalStory({ storyState, onChange }: { storyState: string; onChange: (
                 <span className={cn("grid size-6 place-items-center rounded-full text-[11px] font-bold", active === i ? "bs-gradient text-[#111]" : "bg-line-2 text-mute")}>{i + 1}</span>
                 <span className={cn("text-[11px] font-bold uppercase tracking-wider", active === i ? "text-brand" : "text-mute")}>{n.title}</span>
               </div>
-              <div className="num mt-3 text-[32px] font-semibold leading-none">{n.big}</div>
+              <div className="num-display mt-3 text-[32px] leading-none">{n.big}</div>
               <div className={cn("mt-1.5 min-h-[34px] text-[12px] leading-snug", active === i ? "text-white/65" : "text-mute")}>{n.sub}</div>
               <div className={cn("mt-auto h-1.5 overflow-hidden rounded-full", active === i ? "bg-white/15" : "bg-line-2")}>
                 <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(100, (n.pct ?? 0) * 100)}%`, background: i === 0 ? C.orange : active === i ? C.brand : C.indigo }} />

@@ -81,9 +81,13 @@ export type SceneVisual =
   | { kind: "outlook"; steps: { label: string; rate: number | null; mode: StoryMode }[]; saves: number | null }
   | { kind: "recommendations"; items: Recommendation[]; total: number | null };
 
+/** Where the narration sits relative to the visual. Varies by scene so the briefing does not read as one column. */
+export type SceneLayout = "top" | "bottom" | "left" | "right";
+
 export interface StoryScene {
   id: string;
   mode: StoryMode;
+  layout: SceneLayout;
   /** Chapter label shown above the title, e.g. "Geography". */
   kicker: string;
   title: string;

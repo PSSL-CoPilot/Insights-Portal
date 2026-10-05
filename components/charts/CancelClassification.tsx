@@ -28,7 +28,7 @@ export function CancelClassification({ model, month, state, compact }: { model: 
         data={data}
         center={
           <div>
-            <div className="num text-[26px] font-semibold leading-none">{fmtPct0(dominant.pct)}</div>
+            <div className="num-display text-[26px] leading-none">{fmtPct0(dominant.pct)}</div>
             <div className="mt-1 text-[11px] font-medium text-mute">{dominant.name}</div>
           </div>
         }

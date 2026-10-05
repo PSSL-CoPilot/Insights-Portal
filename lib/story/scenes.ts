@@ -9,7 +9,7 @@ import { fmtInt, fmtPct, fmtPct0, fmtPp, fmtSignedPct, monthName, monthShort } f
 import { storyFacts } from "./facts";
 import { buildRecommendations } from "./narrative";
 import { listJoin } from "./links";
-import type { SceneVisual, StoryModel, StoryScene } from "./types";
+import type { SceneLayout, SceneVisual, StoryModel, StoryScene } from "./types";
 import { buildExecutiveNarrative } from "./narrative";
 
 const SIGNAL_LABELS = [
@@ -24,6 +24,12 @@ const SIGNAL_SHORT: Record<string, string> = {
   "Competitor mentioned at sale": "competitor mentioned",
   "Failed independent confirmation": "failed independent confirmation",
 };
+/** Narration placement per scene: a deliberate mix so text moves around the visual. */
+const LAYOUT: Record<string, SceneLayout> = {
+  portfolio: "top", geography: "right", channels: "bottom", agencies: "right", "sales-prevention": "top", split: "bottom",
+  timing: "left", journey: "top", "install-prevention": "right", "contact-prevention": "bottom", outlook: "left", recommendations: "top",
+};
+
 const WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
 const count = (n: number) => WORDS[n] ?? String(n);
 
@@ -32,7 +38,7 @@ export function buildStoryScenes(model: DataModel, month: MonthKey): StoryScene[
   const M = monthName(month);
   const P = f.prev ? monthName(f.prev) : "the prior month";
   const scenes: StoryScene[] = [];
-  const add = (s: StoryScene) => scenes.push(s);
+  const add = (s: Omit<StoryScene, "layout">) => scenes.push({ ...s, layout: LAYOUT[s.id] ?? "top" });
   const rows = stateRows(model, month);
   const h = f.focus;
 

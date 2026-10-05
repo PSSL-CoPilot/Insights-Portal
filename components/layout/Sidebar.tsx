@@ -52,14 +52,21 @@ function NavLink({ n, on, c }: { n: NavItem; on: boolean; c: boolean }) {
     <Link
       href={n.href}
       title={c ? n.label : undefined}
+      aria-current={on ? "page" : undefined}
       className={cn(
-        "group relative flex h-11 items-center gap-3 rounded-xl px-3 text-[13.5px] font-medium transition-colors duration-200",
-        on ? "bg-panel text-white shadow-sm" : "text-mute hover:bg-subtle hover:text-ink",
+        "group relative flex h-12 items-center gap-3 rounded-full pl-1.5 pr-3 text-[13.5px] transition-colors duration-200",
+        on ? "bg-subtle font-semibold text-ink" : "font-medium text-mute hover:bg-subtle/70 hover:text-ink",
         c && "justify-center px-0",
       )}
     >
-      {on && <span className="bs-gradient absolute inset-y-2 left-0 w-1 rounded-r-full" />}
-      <n.icon className={cn("size-[18px] shrink-0 transition-transform duration-200 group-hover:scale-110", on && "text-brand")} strokeWidth={2} />
+      <span
+        className={cn(
+          "grid size-9 shrink-0 place-items-center rounded-full transition-all duration-300",
+          on ? "bs-gradient text-white shadow-[0_6px_16px_-6px_rgba(242,106,54,0.7)]" : "bg-card text-mute shadow-[0_1px_2px_rgba(0,0,0,0.06)] group-hover:text-ink",
+        )}
+      >
+        <n.icon className="size-[17px] transition-transform duration-200 group-hover:scale-110" strokeWidth={2} />
+      </span>
       {!c && <span className="truncate">{n.label}</span>}
     </Link>
   );
@@ -77,11 +84,11 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-line bg-card transition-[width] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] lg:flex",
-        c ? "w-[76px]" : "w-[244px]",
+        "glass fixed bottom-3 left-3 top-3 z-30 hidden flex-col rounded-[30px] transition-[width] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] lg:flex",
+        c ? "w-[72px]" : "w-[256px]",
       )}
     >
-      <div className={cn("flex h-[76px] items-center gap-2.5 px-5", c && "justify-center px-0")}>
+      <div className={cn("flex h-[78px] items-center gap-2.5 px-5", c && "justify-center px-0")}>
         <BrandMark size={30} />
         {!c && (
           <div className="leading-tight">
@@ -97,9 +104,9 @@ export function Sidebar() {
           onClick={() => setMore((v) => !v)}
           aria-expanded={more}
           title={c ? "More" : undefined}
-          className={cn("flex h-11 items-center gap-3 rounded-xl px-3 text-[13.5px] font-medium text-mute transition-colors hover:bg-subtle hover:text-ink", c && "justify-center px-0")}
+          className={cn("group flex h-12 items-center gap-3 rounded-full pl-1.5 pr-3 text-[13.5px] font-medium text-mute transition-colors hover:bg-subtle/70 hover:text-ink", c && "justify-center px-0")}
         >
-          <Ellipsis className="size-[18px] shrink-0" />
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-card shadow-[0_1px_2px_rgba(0,0,0,0.06)]"><Ellipsis className="size-[17px]" /></span>
           {!c && <>More<ChevronDown className={cn("ml-auto size-4 transition-transform duration-300", more && "rotate-180")} /></>}
         </button>
         <div className={cn("grid transition-[grid-template-rows] duration-300 ease-out", more ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
@@ -109,11 +116,11 @@ export function Sidebar() {
         </div>
       </nav>
 
-      <div className="space-y-1 border-t border-line p-3">
+      <div className="space-y-1 border-t border-line/70 p-3">
         <NavLink n={{ href: "/settings", label: "Settings and Data Source", icon: Database, title: "Settings" }} on={path.startsWith("/settings")} c={c} />
         <button
           onClick={toggleSidebar}
-          className={cn("flex h-10 w-full items-center gap-3 rounded-xl px-3 text-xs font-medium text-soft transition-colors hover:bg-subtle hover:text-ink", c && "justify-center px-0")}
+          className={cn("flex h-10 w-full items-center gap-3 rounded-full px-4 text-xs font-medium text-soft transition-colors hover:bg-subtle hover:text-ink", c && "justify-center px-0")}
           aria-label={c ? "Expand sidebar" : "Collapse sidebar"}
         >
           {c ? <ChevronsRight className="size-4" /> : <><ChevronsLeft className="size-4" /> Collapse</>}

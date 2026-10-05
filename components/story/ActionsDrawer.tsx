@@ -11,6 +11,9 @@ import { buildActions } from "@/lib/data/narratives";
 import { buildRecommendations } from "@/lib/story/narrative";
 import { fmtInt, monthLabel } from "@/lib/format";
 import { ModeTag } from "./NarrativeList";
+import { Donut } from "../charts/Donut";
+
+const SAVE_COLORS = ["var(--color-teal)", "#5fb3d9", "#9ad6a6"];
 
 /** In-context "Take Action" drawer: the recommended actions with the existing Initiate workflow. */
 export function ActionsDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -65,10 +68,17 @@ export function ActionsDrawer({ open, onClose }: { open: boolean; onClose: () =>
                 <button onClick={onClose} aria-label="Close" className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-card text-mute transition hover:border-ink hover:text-ink"><X className="size-4" /></button>
               </div>
               {rec.items.length > 0 && (
-                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="mt-5 flex flex-wrap items-center gap-5">
+                <Donut
+                  size={132}
+                  thickness={18}
+                  data={rec.items.map((r, i) => ({ name: r.label, value: r.saves ?? 0, color: SAVE_COLORS[i % SAVE_COLORS.length], detail: `${fmtInt(r.saves)} saves` }))}
+                  center={<div><div className="num-display text-[22px] leading-none">{fmtInt(rec.dedup)}</div><div className="mt-0.5 text-[10px] text-mute">orders</div></div>}
+                />
+                <div className="grid min-w-[280px] flex-1 grid-cols-2 gap-2 sm:grid-cols-4">
                   {rec.items.map((r) => (
                     <a key={r.id} href={r.actionId ? `#${r.actionId}` : undefined} className="rounded-xl border border-line bg-subtle px-3 py-2.5 transition hover:border-teal">
-                      <div className="num text-[19px] font-semibold text-teal">{fmtInt(r.saves)}</div>
+                      <div className="num flex items-center gap-1.5 text-[19px] font-semibold text-ink"><span className="size-2 rounded-full" style={{ background: SAVE_COLORS[rec.items.indexOf(r) % SAVE_COLORS.length] }} />{fmtInt(r.saves)}</div>
                       <div className="text-[11.5px] leading-tight text-mute">{r.label}</div>
                     </a>
                   ))}
@@ -78,6 +88,7 @@ export function ActionsDrawer({ open, onClose }: { open: boolean; onClose: () =>
                       <div className="text-[11.5px] leading-tight opacity-85">Orders protected, counted once</div>
                     </div>
                   )}
+                </div>
                 </div>
               )}
             </div>

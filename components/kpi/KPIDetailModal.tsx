@@ -129,7 +129,7 @@ function ModalBody({ def, initialTab, initialState, onClose }: { def: KpiDef; in
             <span className="size-1.5 rounded-full bg-brand" /> {def.label}: deep dive
           </div>
           <div className="flex flex-wrap items-end gap-x-6 gap-y-2 pr-12">
-            <div className="num text-[44px] font-semibold leading-none tracking-tight">{formatCompactKpi(def, value)}</div>
+            <div className="num-display text-[44px] leading-none tracking-tight">{formatCompactKpi(def, value)}</div>
             <div className="flex items-center gap-2 pb-1">
               <Delta value={a.delta?.value ?? null} kind={a.delta?.kind ?? "rel"} tone={tone} className="!text-base" />
               <span className="text-sm text-mute">vs {pm ? monthName(pm) : "prior month"}</span>

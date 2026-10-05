@@ -126,7 +126,7 @@ function TimingView({ initialBucket }: { initialBucket: OddBucket | null }) {
               key={x.id}
               onClick={() => setBucket(sel ? null : x.id)}
               aria-pressed={sel}
-              className={cn("rounded-[18px] border p-5 text-left shadow-card transition hover:-translate-y-0.5 hover:shadow-pop", hot ? "border-panel bg-panel text-white" : "border-line bg-card", sel && "ring-2 ring-brand", bucket && !sel && "opacity-60")}
+              className={cn("rounded-[22px] border p-5 text-left shadow-card transition hover:-translate-y-0.5 hover:shadow-pop", hot ? "border-panel bg-panel text-white" : "border-line bg-card", sel && "ring-2 ring-brand", bucket && !sel && "opacity-60")}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-[12px] font-bold tracking-wider" style={{ color: hot ? C.brand : undefined }}>
@@ -137,7 +137,7 @@ function TimingView({ initialBucket }: { initialBucket: OddBucket | null }) {
               </div>
               <div className="mt-3 flex items-end justify-between">
                 <div>
-                  <div className="num text-[46px] font-semibold leading-none">{fmtPct0(cur)}</div>
+                  <div className="num-display text-[46px] leading-none">{fmtPct0(cur)}</div>
                   <div className={cn("mt-2 text-[13px]", hot ? "text-white/60" : "text-mute")}>
                     {fmtInt(s[x.cnt])} cancellations · <span className={cn("font-semibold", x.id === "post" && (d ?? 0) > 0.005 ? "text-bad" : x.id === "post" && (d ?? 0) < -0.005 ? "text-good" : "")}>{fmtPp(d)}</span> MoM
                   </div>
@@ -291,7 +291,7 @@ function StatBox({ label, value, sub, tone }: { label: string; value: string; su
   return (
     <Card className="p-5">
       <div className="eyebrow">{label}</div>
-      <div className="num mt-2 text-[34px] font-semibold leading-none">{value}</div>
+      <div className="num-display mt-2 text-[34px] leading-none">{value}</div>
       {sub && <div className={cn("mt-2 text-[13px] font-semibold", tone === "bad" ? "text-bad" : tone === "good" ? "text-good" : "font-normal text-mute")}>{sub}</div>}
     </Card>
   );
