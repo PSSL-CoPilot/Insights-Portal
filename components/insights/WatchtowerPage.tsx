@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, ChevronRight, Radar } from "lucide-react";
+import { PageInsights } from "../story/PageInsights";
 import { useApp } from "../AppContext";
 import { Badge, Card, cn, LinkButton, SectionTitle } from "../ui/primitives";
 import { C } from "../charts/shared";
@@ -48,6 +49,7 @@ export function WatchtowerPage() {
         sub="The Watchtower state of each order before it cancelled, read as an early warning story. This is the insights interpretation layer, not a replica of Watchtower."
         right={scope ? <button onClick={() => setState(null)} className="rounded-full border border-line bg-card px-4 py-2 text-[12.5px] font-semibold text-mute shadow-card hover:border-ink hover:text-ink">Show portfolio</button> : undefined}
       />
+      <PageInsights page="watchtower" scope={scope} />
 
       {!sig.some((s) => s.pct !== null) ? (
         <Card className="p-8 text-center text-sm text-mute">Watchtower signal data is not available for {where} in {monthLabel(month)}. Select the latest month or clear the state filter.</Card>

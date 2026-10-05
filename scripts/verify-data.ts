@@ -20,6 +20,8 @@ import { buildStoryScenes } from "../lib/story/scenes";
 import { storyFacts } from "../lib/story/facts";
 import { buildActions } from "../lib/data/narratives";
 import { chScope } from "../lib/data/metrics";
+import { buildAgencyNarrative, buildOverviewNarrative, buildRepNarrative, buildStateChannelNarrative } from "../lib/story/analysis";
+import { buildActionsNarrative, buildCancellationsNarrative, buildJourneyNarrative, buildWatchtowerNarrative } from "../lib/story/pages";
 
 const fails: string[] = [];
 const check = (ok: boolean, msg: string) => { console.log(`${ok ? "PASS" : "FAIL"}  ${msg}`); if (!ok) fails.push(msg); };
@@ -49,6 +51,8 @@ const actions = buildActions(m, month);
 const saves = actions.reduce((a, x) => a + (x.saves ?? 0), 0);
 check(saves === layers, `action saves (${saves}) equal the three prevention layers, each counted once`);
 const scenes = buildStoryScenes(m, month);
+const ov = buildOverviewNarrative(m, month);
+check(ov.some((p) => p.id === "problem-sales") && ov.some((p) => p.id === "problem-contact"), "Detailed Analysis overview names both September problems");
 check(scenes.length === 12, `player builds ${scenes.length} scenes (expected 12)`);
 const allText = [
   ex.headline, exText, ...ex.points.map((p) => `${p.label} ${p.evidence?.title ?? ""} ${p.evidence?.interpretation ?? ""}`),
@@ -56,6 +60,13 @@ const allText = [
   ...[...m.states, ...m.channelNames.map(chScope)].flatMap((s) => buildScopeNarrative(m, month, s).map((p) => `${p.label} ${p.text} ${p.evidence?.interpretation ?? ""}`)),
   ...scenes.map((s) => `${s.kicker} ${s.title} ${s.body}`),
   ...actions.map((a) => `${a.title} ${a.why} ${a.impact} ${a.request} ${a.evidence.join(" ")}`),
+  ...[
+    ...buildOverviewNarrative(m, month),
+    ...m.story.agencies.flatMap((a) => buildAgencyNarrative(m, month, a)),
+    ...m.story.reps.slice(0, 20).flatMap((r) => buildRepNarrative(m, month, r)),
+    ...m.channelNames.flatMap((c) => buildStateChannelNarrative(m, month, m.story.focusState!, c)),
+    ...buildCancellationsNarrative(m, month, null), ...buildWatchtowerNarrative(m, month, null), ...buildActionsNarrative(m, month), ...buildJourneyNarrative(m, month),
+  ].map((p) => `${p.label} ${p.text} ${p.evidence?.interpretation ?? ""}`),
 ].join(" ").replace(/\[\[[^|]+\|[^\]]+\]\]/g, (x) => x.split("|")[0]);
 // Human contact-centre agents ("agent outreach", "agent call") are fine; backend agent names are not.
 const scrubbed = allText.replace(/\bagent (outreach|call|queue|follow up)\b/gi, "");

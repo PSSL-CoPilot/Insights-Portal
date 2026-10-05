@@ -57,7 +57,7 @@ interface StepDef {
   render: () => ReactNode;
 }
 
-/** State or channel plan: KPI strip, a progressive six to seven step story, and the recommended actions. */
+/** State or channel detail for Detailed Analysis: KPI strip and every analysis section at once (no step gating). */
 export function StateDrilldown({ scope }: { scope: string }) {
   const { model, month, openKpi } = useApp();
   const channel = isChannel(scope);
@@ -67,19 +67,9 @@ export function StateDrilldown({ scope }: { scope: string }) {
   const prev = pm ? getSnapshot(model, pm, scope) : null;
   const port = getSnapshot(model, month, null);
   const story = useMemo(() => stateStory(model, month, scope), [model, month, scope]);
-  const narrative = useMemo(() => buildScopeNarrative(model, month, scope), [model, month, scope]);
   const hot = channel ? findFocusChannel(model, month)?.channel : findHotspot(model, month)?.state;
   const cancelMoM = assess(model, kpiById("cancels")!, month, scope);
   const isHot = hot === name && (cancelMoM.delta?.value ?? 0) > 0.15;
-  const [unlocked, setUnlocked] = useState(1);
-  const [showAll, setShowAll] = useState(false);
-  const refs = useRef<(HTMLDivElement | null)[]>([]);
-  const base = channel ? "channels" : "states";
-
-  useEffect(() => {
-    setUnlocked(1);
-    setShowAll(false);
-  }, [scope, month]);
 
   const compare = [
     { name: "Unique Sales", a: prev?.sales ?? null, b: cur.sales, unit: "n", good: "up" as const },
@@ -302,86 +292,25 @@ export function StateDrilldown({ scope }: { scope: string }) {
     },
   ];
 
-  const visible = showAll ? steps.length : unlocked;
-  const unlock = (n: number) => {
-    setUnlocked((u) => Math.max(u, n));
-    setTimeout(() => refs.current[n - 1]?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
-  };
-  const t = dirTone("down", cancelMoM.delta?.value);
-
   return (
-    <div className="space-y-8">
-      <div>
-        <Link href={`/${base}?month=${month}`} className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-mute transition hover:text-ink"><ArrowLeft className="size-3.5" /> State and Channel Plan</Link>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <div className="eyebrow mb-1">{channel ? "Channel plan" : "State plan"}</div>
-            <div className="flex items-center gap-3">
-              {channel && <span className="grid size-10 place-items-center rounded-xl bg-panel text-white"><ChannelIcon channel={name} className="size-5" /></span>}
-              <h2 className="text-[38px] font-semibold uppercase leading-none tracking-tight">{name}</h2>
-              {isHot && <Badge tone="bad">FOCUS</Badge>}
-            </div>
-            <div className="mt-2 text-[15px] text-mute">{monthLabel(month)}</div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {(channel ? model.channelNames : model.states).map((n) => (
-              <Link key={n} href={`/${base}/${stateSlug(n)}?month=${month}`} className={cn("rounded-full border px-3 py-1 text-[12px] font-semibold transition", n === name ? "border-panel bg-panel text-white" : "border-line bg-card text-mute hover:border-ink hover:text-ink")}>{n}</Link>
-            ))}
-          </div>
-        </div>
-        <div className={cn("mt-3 text-[13px] font-semibold", t === "bad" ? "text-bad" : t === "good" ? "text-good" : "text-mute")}>
-          Cancellations {fmtSignedPct(cancelMoM.delta?.value ?? null)} vs {pm ? monthName(pm) : "prior month"}
-        </div>
-      </div>
-
-      <NarrativeBlock points={narrative} resetKey={`${scope}-${month}`} eyebrow={`${name} · ${monthLabel(month)}`} />
-
-      <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3">
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 xl:grid-cols-6">
         {KPI_STRIP.slice(0, 5).map((id, i) => (
           <KPICard key={id} def={kpiById(id)!} model={model} month={month} state={scope} onClick={() => openKpi(id, "trend", scope)} delay={i * 40} />
         ))}
         <GrowthCard model={model} scope={scope} month={month} />
-        {KPI_STRIP.slice(5).map((id, i) => (
-          <KPICard key={id} def={kpiById(id)!} model={model} month={month} state={scope} onClick={() => openKpi(id, "trend", scope)} delay={(i + 6) * 40} />
-        ))}
       </div>
 
-      <div>
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5">
-            {steps.map((s, i) => (
-              <button key={s.id} disabled={i + 1 > visible} onClick={() => refs.current[i]?.scrollIntoView({ behavior: "smooth", block: "start" })} title={s.title}
-                className={cn("grid size-8 place-items-center rounded-full border text-xs font-bold transition", i + 1 <= visible ? "border-panel bg-panel text-white" : "border-line bg-card text-soft")}>
-                {i + 1 < visible || showAll ? <Check className="size-3.5" /> : i + 1}
-              </button>
-            ))}
-          </div>
-          {!showAll && unlocked < steps.length && (
-            <button onClick={() => setShowAll(true)} className="flex items-center gap-1.5 text-xs font-semibold text-mute hover:text-ink"><Eye className="size-3.5" /> Reveal the full plan</button>
-          )}
-        </div>
-
-        <div className="space-y-6">
-          {steps.slice(0, visible).map((s, i) => (
-            <div key={s.id} ref={(el) => { refs.current[i] = el; }} className="animate-rise scroll-mt-24">
-              <div className="mb-4 flex items-center gap-3">
-                <span className="bs-gradient grid size-8 place-items-center rounded-full text-sm font-bold text-[#111]">{i + 1}</span>
-                <div>
-                  <h3 className="text-[22px] font-semibold tracking-tight">{s.title}</h3>
-                  <div className="eyebrow">{s.question}</div>
-                </div>
-              </div>
-              {s.render()}
-              {i + 1 === visible && i + 1 < steps.length && !showAll && (
-                <div className="mt-6 flex justify-center">
-                  <Button variant="primary" size="lg" onClick={() => unlock(i + 2)}>
-                    Next: {steps[i + 1].title} <ArrowRight className="size-4" />
-                  </Button>
-                </div>
-              )}
+      <div className="grid gap-5 xl:grid-cols-2">
+        {steps.map((s, i) => (
+          <section key={s.id} className={cn("animate-rise rounded-[26px] border border-line/80 bg-card p-5 shadow-card sm:p-6 dark:border-white/[0.06]", (s.id === "change" || s.id === "mix") && "xl:col-span-2")} style={{ animationDelay: `${i * 60}ms` }}>
+            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="text-[18px] font-semibold tracking-tight">{s.title}</h3>
+              <span className="eyebrow">{s.question}</span>
             </div>
-          ))}
-        </div>
+            {s.render()}
+          </section>
+        ))}
       </div>
     </div>
   );

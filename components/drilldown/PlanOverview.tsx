@@ -22,33 +22,8 @@ const METRICS = [
   { id: "pending", label: "Pending contact %" },
 ] as const;
 
-/** State and Channel Plan: states first, then channels, then where the two intersect. */
-export function PlanOverview(_: { kind: PlanKind }) {
-  const { model, month, setState } = useApp();
-  const router = useRouter();
-  const open = (k: PlanKind, name: string) => {
-    if (k === "state") setState(name);
-    router.push(`/${k === "state" ? "states" : "channels"}/${stateSlug(name)}?month=${month}`);
-  };
-  const order: PlanKind[] = ["state", "channel"];
-  const narrative = useMemo(() => buildPlanNarrative(model, month), [model, month]);
-  return (
-    <div className="space-y-12">
-      <div className="space-y-6">
-        <SectionTitle
-          eyebrow={`State and Channel Plan · ${monthLabel(month)}`}
-          title="Where do we need a plan?"
-          sub="States first, then sales channels, each ranked by cancellation growth. Select any card to open its plan."
-        />
-        <NarrativeBlock points={narrative} resetKey={month} />
-      </div>
-      {order.map((k) => <PlanSection key={k} kind={k} open={open} />)}
-      <StateChannelMatrix onState={(s) => open("state", s)} onChannel={(c) => open("channel", c)} />
-    </div>
-  );
-}
-
-function PlanSection({ kind, open }: { kind: PlanKind; open: (k: PlanKind, name: string) => void }) {
+/** One dimension of Detailed Analysis (states or channels): ranked cards, a comparison chart and the detail table. */
+export function PlanSection({ kind, open }: { kind: PlanKind; open: (k: PlanKind, name: string) => void }) {
   const { model, month, state: filterState, setState } = useApp();
   const [metric, setMetric] = useState<(typeof METRICS)[number]["id"]>("cancels");
   const { rows, focus } = planRows(model, month, kind);

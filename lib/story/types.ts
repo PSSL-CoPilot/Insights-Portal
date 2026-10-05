@@ -32,6 +32,12 @@ export type EvidenceSpec = { title: string; interpretation: string } & (
   | { kind: "forecast" }
   | { kind: "forecast-scope"; scope: string }
   | { kind: "interventions" }
+  | { kind: "classification"; scope: string | null }
+  | { kind: "agency-trend"; agency: string }
+  | { kind: "agency-signals"; agency: string }
+  | { kind: "reps"; agency: string; highlight?: string }
+  | { kind: "rep-signals"; rep: string }
+  | { kind: "measures" }
 );
 
 export type EvidenceKind = EvidenceSpec["kind"];

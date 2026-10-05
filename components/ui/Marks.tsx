@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 
-/** Insights Genie mark: Brightspeed yellow to orange gradient tile with a four point spark. */
+/** Insights Genie mark: round Brightspeed yellow to orange gradient badge with a four point spark. */
 export function GenieMark({ size = 32, className }: { size?: number; className?: string }) {
   const id = useId();
   return (
@@ -18,8 +18,8 @@ export function GenieMark({ size = 32, className }: { size?: number; className?:
           <stop offset=".6" stopColor="#fff" stopOpacity="0" />
         </radialGradient>
       </defs>
-      <rect width="40" height="40" rx="12" fill={`url(#${id}g)`} />
-      <rect width="40" height="40" rx="12" fill={`url(#${id}h)`} />
+      <circle cx="20" cy="20" r="20" fill={`url(#${id}g)`} />
+      <circle cx="20" cy="20" r="20" fill={`url(#${id}h)`} />
       <path d="M19 8.5c.9 5.6 3.4 8.2 9 9.1-5.6.9-8.1 3.5-9 9.1-.9-5.6-3.4-8.2-9-9.1 5.6-.9 8.1-3.5 9-9.1Z" fill="#fff" />
       <path d="M29 24.5c.4 2.3 1.4 3.3 3.6 3.7-2.2.4-3.2 1.4-3.6 3.7-.4-2.3-1.4-3.3-3.6-3.7 2.2-.4 3.2-1.4 3.6-3.7Z" fill="#fff" fillOpacity=".85" />
     </svg>

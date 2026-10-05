@@ -95,7 +95,7 @@ export function StateTable({
                 <td className="num py-2.5 pr-3">{fmtPct0(r.pendingPct)}</td>
                 {onDrill && (
                   <td className="py-1.5 pr-2 text-right">
-                    <button onClick={(e) => { e.stopPropagation(); onDrill(r.name); }} title={`Open the ${r.name} plan`}
+                    <button onClick={(e) => { e.stopPropagation(); onDrill(r.name); }} title={`Open the ${r.name} analysis`}
                       className="inline-flex h-7 items-center gap-1 whitespace-nowrap rounded-full bg-panel px-2.5 text-[11.5px] font-semibold text-white transition-transform duration-200 hover:-translate-y-px">
                       Drill <ArrowUpRight className="size-3" />
                     </button>

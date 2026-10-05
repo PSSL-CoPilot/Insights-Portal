@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Area, AreaChart, Line, LineChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ArrowUpRight, Crosshair, Flame } from "lucide-react";
+import { PageInsights } from "../story/PageInsights";
 import { useApp } from "../AppContext";
 import { ODDTimingChart, ODD_COLORS, type OddBucket } from "../charts/ODDTimingChart";
 import { TrendChart } from "../charts/TrendChart";
@@ -47,6 +48,7 @@ export function CancellationsPage() {
         title={tab === "timing" ? "When are customers cancelling?" : tab === "miss" ? "Why are customers cancelling?" : "Who owns the miss?"}
         right={<Tabs tabs={TABS} value={tab} onChange={setTab} />}
       />
+      <PageInsights page="cancellations" />
       <FocusInsightCard kind={tab} />
       {tab === "timing" && <TimingView initialBucket={bucket === "pre" || bucket === "on" || bucket === "post" ? bucket : null} />}
       {tab === "miss" && <CustomerMissView />}

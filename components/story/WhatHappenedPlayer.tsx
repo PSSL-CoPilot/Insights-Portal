@@ -11,7 +11,8 @@ import { USStoryMap, type MapFrame } from "./USStoryMap";
 import { SceneVisualView } from "./SceneVisual";
 import type { SceneLayout, StoryScene } from "@/lib/story/types";
 import type { MonthKey } from "@/lib/data/types";
-import { monthLabel, stateSlug } from "@/lib/format";
+import { monthLabel } from "@/lib/format";
+import { analysisHref } from "@/lib/story/links";
 
 const ease = [0.22, 0.9, 0.24, 1] as const;
 const NARROW_FRAME: MapFrame = { x0: 0.03, x1: 0.97, y0: 0.42, y1: 0.86 };
@@ -164,7 +165,7 @@ export function WhatHappenedPlayer({
   }, [onClose, toggle, next, prevScene, replay]);
 
   const focusState = mapScenes.map((x) => (x.s.visual.kind === "map" ? x.s.visual.zoom : null)).find(Boolean) ?? null;
-  const evidenceHref = focusState ? `/states/${stateSlug(focusState)}?month=${month}` : `/cancellations?month=${month}`;
+  const evidenceHref = focusState ? analysisHref({ state: focusState }, month) : `/cancellations?month=${month}`;
   const endActions = (
     <div className="flex flex-wrap gap-2.5">
       <button onClick={onTakeAction} className="bs-gradient inline-flex h-12 items-center gap-2 rounded-full px-6 text-[14.5px] font-semibold text-white shadow-[0_12px_28px_-12px_rgba(242,106,54,0.9)] transition-transform hover:-translate-y-0.5">

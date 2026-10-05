@@ -37,7 +37,7 @@ export function ChannelBreakdown({ model, month, def = kpiById("cancels")!, onSe
         valueLabel: def.unit === "pct" ? fmtPct(r.v) : `${fmtInt(r.v)} · ${fmtPct((r.v ?? 0) / total!, 0)}`,
         chip: r.d ? { text: r.d.kind === "pp" ? fmtPp(r.d.value) : fmtSignedPct(r.d.value), tone } : undefined,
         color: isFocus ? C.bad : C.indigo, emphasis: isFocus,
-        onClick: onSelect ? () => onSelect(r.c) : undefined, tip: onSelect ? `Open the ${r.c} plan` : undefined,
+        onClick: onSelect ? () => onSelect(r.c) : undefined, tip: onSelect ? `Open the ${r.c} analysis` : undefined,
       };
     });
   return <RankedBars rows={bars} />;

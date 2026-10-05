@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertOctagon, Clock, HandHelping, PackageCheck, PhoneCall, Route } from "lucide-react";
+import { PageInsights } from "../story/PageInsights";
 import { useApp } from "../AppContext";
 import { Badge, Card, cn, SectionTitle } from "../ui/primitives";
 import { Reveal } from "../ui/Reveal";
@@ -41,6 +42,7 @@ export function JourneyPage() {
   return (
     <div className="space-y-10">
       <SectionTitle eyebrow={`Sales → Install journey · ${monthLabel(month)}`} title="Where in the lifecycle are we losing customers?" sub="From order to install, cancellations can happen before, on, or after the Original Due Date." />
+      <PageInsights page="journey" scope={null} />
 
       <Card className="p-5 sm:p-7">
         <div className="grid gap-3 md:grid-cols-5">

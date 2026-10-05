@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronDown } from "lucide-react";
+import { PageInsights } from "../story/PageInsights";
 import { useApp } from "../AppContext";
 import { InsightCard } from "./InsightCard";
 import { Card, cn, SectionTitle } from "../ui/primitives";
@@ -25,6 +26,7 @@ export function InsightsPage() {
   return (
     <div className="space-y-9">
       <SectionTitle eyebrow={`Insights · ${monthLabel(month)}`} title="What does the data say?" sub="Generated from the data: each insight reflects this month’s numbers, with its supporting evidence and a recommended next step." />
+      <PageInsights page="insights" scope={null} />
 
       <div className="flex flex-wrap items-center gap-2.5">
         {SEVS.map((s) => (

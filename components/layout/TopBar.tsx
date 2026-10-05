@@ -6,7 +6,8 @@ import { Bell, ChevronDown, Moon, PanelLeft, Sun } from "lucide-react";
 import { useApp } from "../AppContext";
 import { AskAnything } from "../ai/AskAnything";
 import { MORE, NAV, BrandMark } from "./Sidebar";
-import { monthLabel, stateSlug } from "@/lib/format";
+import { monthLabel } from "@/lib/format";
+import { analysisHref } from "@/lib/story/links";
 import { cn } from "../ui/primitives";
 
 function Select({ value, onChange, children, label, className }: { value: string; onChange: (v: string) => void; children: React.ReactNode; label: string; className?: string }) {
@@ -52,10 +53,10 @@ export function TopBar() {
   const nav = [...NAV, ...MORE].find((n) => (n.href === "/" ? path === "/" : path.startsWith(n.href) || (!!n.also && path.startsWith(n.also))));
   const title = path.startsWith("/settings") ? "Settings and Data Source" : nav?.title ?? "Command Center";
 
-  // On the State Wise Plan, the state filter and the open state page are the same selection.
+  // On Detailed Analysis, the state filter and the page selection are the same thing.
   const onState = (v: string) => {
     setState(v || null);
-    if (path.startsWith("/states")) router.push(v ? `/states/${stateSlug(v)}?month=${month}` : `/states?month=${month}`);
+    if (path.startsWith("/states") || path.startsWith("/channels")) router.push(analysisHref({ state: v || null }, month), { scroll: false });
   };
 
   return (

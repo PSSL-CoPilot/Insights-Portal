@@ -12,6 +12,9 @@ import { WatchtowerSignals } from "../charts/WatchtowerSignals";
 import { RankedBars, type RankedRow } from "../charts/RankedBars";
 import { planRows } from "../charts/StateRanking";
 import { Donut } from "../charts/Donut";
+import { CancelClassification } from "../charts/CancelClassification";
+import { AgencySignals, AgencyTrend, RepRanking, RepSignals } from "../analysis/charts";
+import { analysisHref } from "@/lib/story/links";
 import { C, TipCard, axisProps } from "../charts/shared";
 import { cn } from "../ui/primitives";
 import { ChannelIcon } from "./ChannelIcon";
@@ -103,7 +106,7 @@ function EvidenceBody({ spec }: { spec: EvidenceSpec }) {
           valueLabel: key === "cancelRate" ? fmtPct(r.cancelRate) : fmtInt(r.cancels),
           chip: r.cancelsMoM !== null ? { text: fmtSignedPct(r.cancelsMoM), tone: r.cancelsMoM > 0.15 ? "bad" : "neutral" } : undefined,
           color: hi ? C.bad : C.slate, emphasis: hi, dim: spec.highlight.length > 0 && !hi,
-          onClick: () => go(`/${spec.dim === "state" ? "states" : "channels"}/${stateSlug(r.name)}?month=${month}`),
+          onClick: () => go(analysisHref(spec.dim === "state" ? { state: r.name } : { channel: r.name }, month)),
         };
       });
       return <RankedBars rows={bars} dense />;
@@ -126,7 +129,7 @@ function EvidenceBody({ spec }: { spec: EvidenceSpec }) {
               label: <span className="flex items-center gap-2">{spec.kind === "scope-channels" && <ChannelIcon channel={r.channel} className="size-3.5 text-mute" />}{name(r)}</span>,
               sub: `${fmtInt(r.cancels)} of ${fmtInt(r.sales)} sales`,
               value: r.cancelRate, valueLabel: fmtPct(r.cancelRate), color: hi ? C.bad : C.slate, emphasis: hi,
-              onClick: () => go(spec.kind === "scope-channels" ? `/channels/${stateSlug(r.channel)}?month=${month}` : `/states/${stateSlug(r.state)}?month=${month}`),
+              onClick: () => go(analysisHref({ state: r.state, channel: r.channel }, month)),
             };
           })}
         />
@@ -148,6 +151,7 @@ function EvidenceBody({ spec }: { spec: EvidenceSpec }) {
               value: a.cancelRate, valueLabel: fmtPct(a.cancelRate),
               chip: a.gap !== null ? { text: fmtPp(a.gap), tone: hi ? "bad" : "neutral" } : undefined,
               color: hi ? C.bad : C.slate, emphasis: hi,
+              onClick: () => go(analysisHref({ agency: a.agency }, month)),
             };
           })}
         />
@@ -175,7 +179,47 @@ function EvidenceBody({ spec }: { spec: EvidenceSpec }) {
       return <ForecastScopeEvidence scope={spec.scope} />;
     case "interventions":
       return <InterventionBars />;
+    case "classification":
+      return <CancelClassification model={model} month={month} state={spec.scope} compact />;
+    case "agency-trend":
+      return <AgencyTrend model={model} agency={spec.agency} month={month} height={200} />;
+    case "agency-signals":
+      return <AgencySignals model={model} agency={spec.agency} />;
+    case "reps":
+      return <RepRanking reps={model.story.reps.filter((r) => r.agency === spec.agency)} highlight={spec.highlight} onSelect={(id) => go(analysisHref({ rep: id }, month))} limit={14} />;
+    case "rep-signals":
+      return <RepSignals model={model} rep={spec.rep} />;
+    case "measures":
+      return <MeasuresTable />;
   }
+}
+
+function MeasuresTable() {
+  const { model } = useApp();
+  const rows = model.story.measures;
+  if (!rows.length) return <Unavailable text="Success measures are not available in the workbook." />;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[520px] text-[12.5px]">
+        <thead>
+          <tr className="text-left text-[10.5px] uppercase tracking-wider text-mute">
+            <th className="pb-2 font-semibold">Measure</th><th className="pb-2 text-right font-semibold">Actual</th><th className="pb-2 text-right font-semibold">No action</th><th className="pb-2 text-right font-semibold">Target</th><th className="pb-2 pl-4 font-semibold">Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((m) => (
+            <tr key={m.measure} className="border-t border-line-2">
+              <td className="py-2 font-medium">{m.measure}</td>
+              <td className="num py-2 text-right">{m.actual}</td>
+              <td className="num py-2 text-right text-bad">{m.noAction}</td>
+              <td className="num py-2 text-right font-semibold text-teal">{m.target}</td>
+              <td className="py-2 pl-4 text-mute">{m.role}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function Unavailable({ text }: { text: string }) {

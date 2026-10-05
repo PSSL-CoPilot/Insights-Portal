@@ -20,6 +20,7 @@ import {
 } from "@/lib/data/metrics";
 import type { DataModel, MonthKey } from "@/lib/data/types";
 import { fmtInt, fmtPct, fmtPct0, fmtPp, fmtSignedPct, monthLabel, monthName, monthShort, stateSlug } from "@/lib/format";
+import { analysisHref } from "@/lib/story/links";
 
 type TabId = "trend" | "states" | "channels" | "odd" | "class" | "drivers" | "signals";
 
@@ -110,7 +111,7 @@ function ModalBody({ def, initialTab, initialState, onClose }: { def: KpiDef; in
   const drill = (kind: "state" | "channel") => (name: string) => {
     onClose();
     if (kind === "state") setState(name);
-    router.push(`/${kind === "state" ? "states" : "channels"}/${stateSlug(name)}?${q}`);
+    router.push(analysisHref(kind === "state" ? { state: name } : { channel: name }, month));
   };
 
   const crumbs = [def.label, scopeName(focus, "All states"), tabs.find((t) => t.id === tab)?.label ?? ""];

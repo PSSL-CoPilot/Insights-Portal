@@ -9,6 +9,7 @@ import {
   type ChannelRow, type StateRow, REASON_LABELS,
 } from "./metrics";
 import { fmtInt, fmtPct, fmtPct0, fmtPp, fmtSignedPct, monthLabel, monthName, monthShort, stateSlug } from "../format";
+import { analysisHref } from "../story/links";
 
 export type RootCause = "customer-readiness" | "operational" | "mixed" | "stable" | "insufficient";
 
@@ -206,7 +207,7 @@ export function buildInsights(model: DataModel, month: MonthKey): Insight[] {
         ...(hot.pendingPct !== null ? [`Pending Customer Contact ${fmtPct0(hot.pendingPct)}`] : []),
       ],
       action: `Prioritise ${hot.state} appointment readiness actions before any footprint wide change.`,
-      explore: { label: `Open ${hot.state} plan`, href: `/states/${stateSlug(hot.state)}?${q}` },
+      explore: { label: `Open ${hot.state} analysis`, href: analysisHref({ state: hot.state }, month) },
     });
   }
 
@@ -220,7 +221,7 @@ export function buildInsights(model: DataModel, month: MonthKey): Insight[] {
       insight: `${fc.channel} accounts for ${fmtPct0(fc.contribution)} of the cancellation increase at a ${fmtPct(fc.cancelRate)} cancel rate; the remaining channels moved considerably less.`,
       evidence: [`Post ODD ${fmtPct0(fc.postPct)}; Customer Miss ${fmtPct0(fc.custPct)}; Pending Customer Contact ${fmtPct0(fc.pendingPct)}`],
       action: `Review ${fc.channel} order quality and expectation setting at the point of sale.`,
-      explore: { label: `Open ${fc.channel} plan`, href: `/channels/${stateSlug(fc.channel)}?${q}` },
+      explore: { label: `Open ${fc.channel} analysis`, href: analysisHref({ channel: fc.channel }, month) },
     });
   }
 
@@ -379,7 +380,7 @@ export function buildActions(model: DataModel, month: MonthKey): ActionItem[] {
           ],
           request: `Reinforce appointment expectation setting in the ${fc.channel} sales script, verify contact and access details at order entry, and review representative level cancellation rates weekly.`,
           measures: [`${fc.channel} cancel rate`, `${fc.channel} Pending Customer Contact share`],
-          href: `/channels/${stateSlug(fc.channel)}?${q}`, hrefLabel: `Open ${fc.channel} plan`,
+          href: analysisHref({ channel: fc.channel }, month), hrefLabel: `Open ${fc.channel} analysis`,
         } as ActionItem]
       : []),
     {
@@ -471,7 +472,7 @@ function withPreventionPlan(model: DataModel, month: MonthKey, list: ActionItem[
       ],
       request: "Independently verify orders that score high on low intent, promotion dependence, competitor mention or failed confirmation before installation is scheduled, and coach or pause Critical representatives.",
       measures: ["Critical representative share", ...channels.map((c) => `${hot.state} ${c} cancel rate`), "Share of risky orders verified before installation"],
-      href: `/channels/${stateSlug(channels[0])}?${q}`, hrefLabel: `Open ${channels[0]} plan`, saves: sales.saves,
+      href: analysisHref({ agency: weak[0].agency }, month), hrefLabel: `Open ${weak[0].agency} analysis`, saves: sales.saves,
     };
     const i = out.findIndex((a) => a.id === "channel");
     if (i >= 0) out.splice(i, 1, item);

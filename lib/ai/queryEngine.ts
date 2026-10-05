@@ -12,6 +12,7 @@ import {
 import { buildActions, buildInsights, diagnose } from "../data/narratives";
 import { buildExecutiveNarrative } from "../story/narrative";
 import { fmtInt, fmtPct, fmtPct0, fmtPp, fmtSignedPct, monthName, monthShort, stateSlug } from "../format";
+import { analysisHref } from "../story/links";
 
 export interface GenieContext {
   model: DataModel;
@@ -204,7 +205,7 @@ function dataAnswer(question: string, ctx: GenieContext): GenieAnswer | null {
         rows.map((r, i) => `${i + 1}. **${r.name}**: ${fmtV(m, r.v)}${total ? ` (${fmtPct0((r.v ?? 0) / total)} of total)` : ""}${fmtD(m, r.pv, r.v) ? `, ${fmtD(m, r.pv, r.v)} month over month` : ""}`).join("\n") +
         (total ? `\n\nTotal: **${fmtInt(total)}**.` : ""),
       kpis: rows.slice(0, 4).map((r) => kp(r.name, fmtV(m, r.v), fmtD(m, r.pv, r.v), toneD(m, r.pv, r.v))),
-      cta: { label: "Open State and Channel Plan", href: `/${dimChannel ? "channels" : "states"}?${q2}` },
+      cta: { label: "Open Detailed Analysis", href: `/states?${q2}` },
       followUps: [`Which ${dimChannel ? "channel" : "state"} has the highest cancel rate?`],
     };
   }
@@ -224,7 +225,7 @@ function dataAnswer(question: string, ctx: GenieContext): GenieAnswer | null {
       intent: "ranking",
       text: `**${top.name}** has the ${low ? "lowest" : "highest"} ${m.label.toLowerCase()} in ${M}: **${fmtV(m, top.v)}**.\n\nFull ranking: ${rows.map((r) => `${r.name} ${fmtV(m, r.v)}`).join(" · ")}.`,
       kpis: rows.slice(0, 3).map((r) => kp(r.name, fmtV(m, r.v))),
-      cta: { label: `Open ${top.name} plan`, href: `/${dimChannel ? "channels" : "states"}/${stateSlug(top.name)}?${q2}` },
+      cta: { label: `Open ${top.name} analysis`, href: analysisHref(dimChannel ? { channel: top.name } : { state: top.name }, month) },
     };
   }
 
@@ -277,7 +278,7 @@ function dataAnswer(question: string, ctx: GenieContext): GenieAnswer | null {
       }
     }
     const sc = scopes[0].scope;
-    const cta = sc ? { label: `Open ${scopeName(sc)} plan`, href: `/${sc.startsWith("ch:") ? "channels" : "states"}/${stateSlug(scopeName(sc))}?${q2}` } : { label: "Open Command Center", href: `/?${q2}` };
+    const cta = sc ? { label: `Open ${scopeName(sc)} analysis`, href: analysisHref(sc.startsWith("ch:") ? { channel: scopeName(sc) } : { state: sc }, month) } : { label: "Open Command Center", href: `/?${q2}` };
     return { intent: "compare", text: out.join("\n\n"), kpis: kpis.slice(0, 4), cta };
   }
 
@@ -309,7 +310,7 @@ function dataAnswer(question: string, ctx: GenieContext): GenieAnswer | null {
     intent: "value",
     text: lines.join("\n\n"),
     kpis: kpis.slice(0, 4),
-    cta: first.scope ? { label: `Open ${scopeName(first.scope)} plan`, href: `/${first.scope.startsWith("ch:") ? "channels" : "states"}/${stateSlug(scopeName(first.scope))}?${q2}` } : { label: "Open Command Center", href: `/?${q2}` },
+    cta: first.scope ? { label: `Open ${scopeName(first.scope)} analysis`, href: analysisHref(first.scope.startsWith("ch:") ? { channel: scopeName(first.scope) } : { state: first.scope }, month) } : { label: "Open Command Center", href: `/?${q2}` },
     followUps: [`How did ${p.metrics[0].label.toLowerCase()} change since January?`, `Break down ${M} ${p.metrics[0].label.toLowerCase()} by state`],
   };
 }
@@ -401,7 +402,7 @@ export const ruleBasedProvider: AnswerProvider = {
           intent: "top-channel",
           text: `**${top.channel}** is the focus channel in ${M}: cancellations ${fmtSignedPct(top.cancelsMoM)} (${fmtInt(top.cancels)} orders, ${fmtPct(top.cancelRate)} cancel rate), **${fmtPct0(top.contribution)}** of the portfolio increase.\n\nBy growth: ${[...rows].sort((a, b) => (b.cancelsMoM ?? -1) - (a.cancelsMoM ?? -1)).map((r) => `${r.channel} ${fmtSignedPct(r.cancelsMoM)}`).join(" · ")}.`,
           kpis: [kp(`${top.channel} cancellations`, fmtInt(top.cancels), fmtSignedPct(top.cancelsMoM), "bad"), kp("Cancel rate", fmtPct(top.cancelRate)), kp("Share of increase", fmtPct0(top.contribution))],
-          cta: { label: `Open ${top.channel} plan`, href: `/channels/${stateSlug(top.channel)}?${q2}` },
+          cta: { label: `Open ${top.channel} analysis`, href: analysisHref({ channel: top.channel }, month) },
         };
       }
       const rows = [...stateRows(model, month)].sort((a, b) => (b.cancelsMoM ?? -1) - (a.cancelsMoM ?? -1));
@@ -414,7 +415,7 @@ export const ruleBasedProvider: AnswerProvider = {
           `Ranking by growth: ${rows.map((r) => `${r.state} ${fmtSignedPct(r.cancelsMoM)}`).join(" · ")}.` +
           (d.focusChannel ? `\n\nFocus channel: **${d.focusChannel.channel}** (${fmtPct0(d.focusChannel.contribution)} of the increase).` : ""),
         kpis: [kp(`${top.state} cancellations`, fmtInt(top.cancels), fmtSignedPct(top.cancelsMoM), "bad"), kp("Post ODD", fmtPct0(top.postPct)), kp("Pending contact", fmtPct0(top.pendingPct))],
-        cta: { label: `Open ${top.state} plan`, href: `/states/${stateSlug(top.state)}?${q2}` },
+        cta: { label: `Open ${top.state} analysis`, href: analysisHref({ state: top.state }, month) },
         followUps: [`Why is ${top.state} performing poorly?`, "Which channel is driving the increase?"],
       };
     }
@@ -434,7 +435,7 @@ export const ruleBasedProvider: AnswerProvider = {
           `Post ODD is **${fmtPct0(s.postPct)}** of its cancellations, Customer Miss **${fmtPct0(s.custPct)}**${s.pendingPct !== null ? ` and Pending Customer Contact **${fmtPct0(s.pendingPct)}**` : ""}. ` +
           (late.length ? `Fastest growing reasons: ${late.map((r) => `${r.label} (${fmtSignedPct(r.mom)})`).join(", ")}.` : ""),
         kpis: [kp("Cancellations", fmtInt(s.cancels), mom !== null ? fmtSignedPct(mom) : undefined, (mom ?? 0) > 0 ? "bad" : "good"), kp("Cancel rate", fmtPct(s.cancelRate)), kp("Post ODD", fmtPct0(s.postPct)), kp("Pending contact", fmtPct0(s.pendingPct))],
-        cta: { label: `Open ${name} plan`, href: `/${st ? "states" : "channels"}/${stateSlug(name)}?${q2}` },
+        cta: { label: `Open ${name} analysis`, href: analysisHref(st ? { state: name } : { channel: name }, month) },
         followUps: st ? [`What is driving Customer Miss in ${st}?`, "What should Brightspeed do next?"] : ["What should Brightspeed do next?"],
       };
     }

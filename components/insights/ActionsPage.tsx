@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Target } from "lucide-react";
+import { PageInsights } from "../story/PageInsights";
 import { useApp } from "../AppContext";
 import { ActionCard, useActionStore } from "./ActionCard";
 import { Card, cn, dirTone, SectionTitle } from "../ui/primitives";
@@ -28,6 +29,7 @@ export function ActionsPage() {
         sub="Insights translated into owned, prioritised actions. Initiate an action to draft the email to its owner from the data, review it, and send it; status is then tracked here."
         right={<div className="rounded-full border border-line bg-card px-4 py-2 text-[13px] font-semibold shadow-card"><span className="num">{initiated}</span> of {actions.length} actions initiated</div>}
       />
+      <PageInsights page="actions" />
 
       <div className="grid gap-5 xl:grid-cols-2">
         {actions.map((a, i) => (

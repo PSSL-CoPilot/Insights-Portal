@@ -1,5 +1,10 @@
-import { PlanOverview } from "@/components/drilldown/PlanOverview";
+import { Suspense } from "react";
+import { DetailedAnalysis } from "@/components/analysis/DetailedAnalysis";
 
-export default function ChannelsPage() {
-  return <PlanOverview kind="channel" />;
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <DetailedAnalysis />
+    </Suspense>
+  );
 }

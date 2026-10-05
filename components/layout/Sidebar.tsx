@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, ChevronDown, ChevronsLeft, ChevronsRight, CircleSlash, Database, Ellipsis, LayoutDashboard, ListChecks, MapPin, Route } from "lucide-react";
+import { Activity, ChevronDown, ChevronsLeft, ChevronsRight, CircleSlash, Database, Ellipsis, Layers, LayoutDashboard, ListChecks, Route } from "lucide-react";
 import type { ComponentType } from "react";
 import { InsightsGlyph } from "../ui/Marks";
 import { useApp } from "../AppContext";
@@ -14,7 +14,7 @@ type NavItem = { href: string; label: string; icon: ComponentType<{ className?: 
 export const NAV: NavItem[] = [
   { href: "/", label: "Command Center", icon: LayoutDashboard, title: "Command Center" },
   { href: "/cancellations", label: "Cancellations", icon: CircleSlash, title: "Cancellations" },
-  { href: "/states", label: "State and Channel Plan", icon: MapPin, title: "State and Channel Plan", also: "/channels" },
+  { href: "/states", label: "Detailed Analysis", icon: Layers, title: "Detailed Analysis", also: "/channels" },
   { href: "/insights", label: "Insights", icon: InsightsGlyph, title: "Insights" },
   { href: "/watchtower", label: "Watchtower", icon: Activity, title: "Watchtower" },
   { href: "/actions", label: "Actions", icon: ListChecks, title: "Actions" },
