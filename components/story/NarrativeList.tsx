@@ -57,10 +57,10 @@ export function NarrativeList({ points, resetKey, className }: { points: Narrati
             >
               {i + 1}
             </span>
-            <div className="min-w-0">
+            <div className={cn("min-w-0", p.mode === "preventive" && "-mx-1 rounded-[18px] border border-teal/20 bg-teal-soft/45 px-4 py-3")}>
               <div className="mb-1 flex flex-wrap items-center gap-2">
                 <ModeTag mode={p.mode} />
-                <span className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-mute">{p.label}</span>
+                <span className={cn("text-[11.5px] font-semibold uppercase tracking-[0.08em]", p.mode === "preventive" ? "text-teal" : "text-mute")}>{p.label}</span>
               </div>
               <p className="text-[15px] leading-[1.62] text-ink-2">
                 <RichText text={p.text} />

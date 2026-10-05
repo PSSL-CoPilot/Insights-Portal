@@ -7,7 +7,7 @@ import type { DataModel, InterventionRow, MonthKey } from "../data/types";
 import { getSnapshot, isChannel, prevMonth, scopeName, stateRows, type Snapshot } from "../data/metrics";
 import { fmtInt, fmtPct, fmtPct0, fmtPp, fmtSignedPct, monthName } from "../format";
 import { storyFacts, type StoryFacts } from "./facts";
-import { channelLink, hrefs, link, listJoin, scopeLink, stateLink } from "./links";
+import { agencyLink, channelLink, hrefs, link, listJoin, scopeLink, stateLink } from "./links";
 import type { NarrativePoint, Recommendation, StorySection } from "./types";
 
 const abs = (s: string) => s.replace(/^[+−]/, "");
@@ -23,6 +23,10 @@ export const INTERVENTION_LABEL: Record<InterventionRow["kind"], string> = {
   contact: "Customer-contact rescue",
   total: "Deduplicated total",
   other: "Recommended intervention",
+};
+/** Imperative form for the "what to do now" line. */
+const INTERVENTION_VERB: Record<InterventionRow["kind"], string> = {
+  sales: "verify risky sales", install: "fix installation readiness", contact: "rescue customer contact", total: "act", other: "act",
 };
 const INTERVENTION_ACTION: Partial<Record<InterventionRow["kind"], string>> = { sales: "sales-quality", install: "install", contact: "confirm" };
 
@@ -99,46 +103,6 @@ function channelPoint(f: StoryFacts): NarrativePoint | null {
   };
 }
 
-function salesQualityPoint(f: StoryFacts): NarrativePoint | null {
-  const dr = f.drivers.sales;
-  if (!f.hasStory || !f.focus || !dr || !f.weakAgencies.length) return null;
-  const gaps = f.weakAgencies.map((a) => a.gap ?? 0);
-  const c = f.cohort;
-  return {
-    id: "sales-quality", mode: "observed", label: "Sales quality analysis", tone: "bad",
-    text:
-      `**${fmtInt(dr.cancels)}** ${f.focus.state} cancellations (**${fmtPct0(dr.share)}**) trace to sales and agency quality. ` +
-      `${listJoin(f.weakAgencies.map((a) => a.agency))} run ${fmtPp(Math.min(...gaps))} to ${fmtPp(Math.max(...gaps))} above their own history` +
-      (c ? `; at ${c.agency}, new September representatives made ${fmtPct0(c.salesShare)} of sales but **${fmtPct0(c.cancelShare)}** of cancellations.` : "."),
-    evidence: {
-      kind: "agencies", highlight: f.weakAgencies.map((a) => a.agency), title: `${f.focus.state} agencies: ${monthName(f.month)} vs own history`,
-      interpretation: `Only the agencies named above broke from their own baseline; the other ${f.steadyAgencies.length} sources stayed within ${fmtPp(Math.max(...f.steadyAgencies.map((a) => a.gap ?? 0)))} of history, so this is a partner and representative problem, not a market one.`,
-    },
-  };
-}
-
-function contactPoint(f: StoryFacts): NarrativePoint | null {
-  const dr = f.drivers.contact;
-  if (!f.hasStory || !f.focus || !dr) return null;
-  const sales = f.drivers.sales;
-  const larger = !sales || (dr.cancels ?? 0) >= (sales.cancels ?? 0);
-  const pending = f.focusSnap?.pendingPct ?? null;
-  return {
-    id: "contact", mode: "observed", label: "Customer-contact risk", tone: "bad",
-    text:
-      `The ${larger ? "larger" : "second"} cause is customer contact and appointment readiness: **${fmtInt(dr.cancels)}** cancellations (**${fmtPct0(dr.share)}**) by primary attribution.` +
-      (pending !== null
-        ? ` Separately, **${fmtPct0(pending)}** of ${f.focus.state} cancellations carried a ${link("Pending Customer Contact", hrefs.watchtower(f.month, f.focus.state))} signal; the signal and the attribution are different measures.`
-        : ""),
-    evidence: {
-      kind: "drivers", title: `${f.focus.state} primary driver attribution, ${monthName(f.month)}`,
-      interpretation:
-        `Each order carries one primary cause, so the shares add to 100%; Pending Customer Contact is a status many orders carry alongside another cause.` +
-        (f.reclassMoved ? ` Journey root-cause analysis also moves ${fmtInt(f.reclassMoved)} cancellations from Customer Miss to Company Miss.` : ""),
-    },
-  };
-}
-
 function timingPoint(f: StoryFacts): NarrativePoint | null {
   const { port, portPrev } = f;
   if (port.postPct === null || !f.prev) return null;
@@ -179,45 +143,143 @@ function rootCausePoint(f: StoryFacts): NarrativePoint | null {
   };
 }
 
-function outlookPoint(f: StoryFacts): NarrativePoint | null {
+// ------------------------------------------------------------------ Command Center
+/** `{{bad:+36%}}` when a move hurts the business, `{{good:+5%}}` when it helps. */
+const toned = (v: number | null, goodWhenUp: boolean) => {
+  if (v === null) return "n/a";
+  const tone = Math.abs(v) < 0.005 ? "neutral" : (v > 0) === goodWhenUp ? "good" : "bad";
+  return `{{${tone}:${fmtSignedPct(v)}}}`;
+};
+
+/**
+ * Executive story in one continuous sequence: portfolio, the focus state, its channels, the sales
+ * quality problem and (immediately) its October prevention, the customer contact problem, late
+ * stage timing, the October outlook and the action. Short sentences; every figure from the data.
+ */
+function executivePoints(f: StoryFacts): NarrativePoint[] | null {
+  const { d, port, portPrev, month, focus } = f;
+  if (!f.hasStory || !focus || !d.anomaly) return null;
+  const M = monthName(month);
+  const out: NarrativePoint[] = [];
+  const s = f.drivers.sales, c = f.drivers.contact;
+
+  out.push({
+    id: "portfolio", mode: "observed", label: "Portfolio", tone: "bad",
+    text: `Cancellations reached **${fmtInt(port.cancels)}**. The cancel rate rose from ${fmtPct(portPrev?.cancelRate)} to **${fmtPct(port.cancelRate)}**, well above the ${fmtPct(f.baselineRate)} norm.`,
+    evidence: { kind: "trend", scope: null, title: "Cancel rate by month", interpretation: `Stable all year, then a clear break in ${M}. Sales growth does not explain it.` },
+  });
+
+  out.push({
+    id: "geography", mode: "observed", label: "Where", tone: "bad",
+    text: `${stateLink(focus.state, month)} drove **${fmtPct0(focus.contribution)}** of the increase: its cancellations rose **${fmtSignedPct(focus.cancelsMoM)}**. Every other state stayed flat${f.otherGrowth ? ` (${fmtSignedPct(f.otherGrowth[0])} to ${fmtSignedPct(f.otherGrowth[1])})` : ""}.`,
+    evidence: { kind: "ranking", dim: "state", metric: "cancels", highlight: [focus.state], title: `Cancellations by state, ${M}`, interpretation: `${focus.state} is the only state outside its normal range.` },
+  });
+
+  if (f.outlierChannels.length) {
+    const ch = f.outlierChannels;
+    out.push({
+      id: "channel", mode: "observed", label: "Which channels", tone: "bad",
+      text: `Inside ${focus.state}, the problem sits in ${listJoin(ch.map((c) => channelLink(c.channel, month)))}: ${listJoin(ch.map((c) => `**${fmtPct(c.rate)}**`))} of sales cancelled${f.normalChannelRate ? `, against ${fmtPct0(f.normalChannelRate[0])} to ${fmtPct0(f.normalChannelRate[1])} in other channels` : ""}.`,
+      evidence: { kind: "scope-channels", state: focus.state, highlight: ch.map((c) => c.channel), title: `${focus.state} cancel rate by channel`, interpretation: `${listJoin(ch.map((c) => c.channel))} cancel at more than twice the rate of every other channel.` },
+    });
+  }
+
+  if (s && f.weakAgencies.length) {
+    const gaps = f.weakAgencies.map((a) => a.gap ?? 0);
+    const co = f.cohort;
+    out.push({
+      id: "sales-quality", mode: "observed", label: "Problem 1: sales quality", tone: "bad",
+      text:
+        `${listJoin(f.weakAgencies.map((a) => agencyLink(a.agency, month)))} broke from their own history (${fmtPp(Math.min(...gaps))} to ${fmtPp(Math.max(...gaps))}).` +
+        (co ? ` At ${co.agency}, new reps made ${fmtPct0(co.salesShare)} of sales but **${fmtPct0(co.cancelShare)}** of cancellations.` : "") +
+        ` Poor quality sales explain **${fmtInt(s.cancels)}** cancellations (**${fmtPct0(s.share)}**).`,
+      evidence: { kind: "sales-quality", title: `${focus.state} agencies and representatives`, interpretation: "A few partners, and inside them the newest reps, carry most of the loss: a sales quality problem, not a market one." },
+    });
+
+    // Forward-looking, straight after the problem it prevents.
+    const iv = f.interventions.sales;
+    const ro = f.riskyOrders;
+    if (iv && ro.orders !== null) {
+      const sg = f.signals;
+      out.push({
+        id: "sales-prevention", mode: "preventive", label: `${f.forecast.month ? monthName(f.forecast.month) : "Next month"} prevention: sales quality`, tone: "warn",
+        text:
+          `Score each of the **${fmtInt(ro.orders)}** ${f.forecast.month ? monthName(f.forecast.month) : "next month"} ${listJoin(ro.channels)} orders in ${focus.state} for cancellation risk: ` +
+          `low intent (${fmtPct0(sg.lowIntent)}), promotion sensitivity (${fmtPct0(sg.promo)}), competitor mention (${fmtPct0(sg.competitor)}), price or offer mismatch (${fmtPct0(sg.failedConfirm)} fail independent confirmation) and rep risk (${fmtPct0(f.criticalRepShare)} of sales from Critical reps). ` +
+          `Verify the riskiest orders before installation and coach Critical reps: about **${fmtInt(iv.saves)}** cancellations avoided.`,
+        evidence: { kind: "sales-prevention", title: "Preventive sales quality analysis", interpretation: `Without action these orders are projected to cancel at ${fmtPct0(ro.rate)}. Verifying them before installation turns a lost sale into a confirmed or corrected one.` },
+      });
+    }
+  }
+
+  if (c) {
+    const bigger = !s || (c.cancels ?? 0) >= (s.cancels ?? 0);
+    out.push({
+      id: "contact", mode: "observed", label: `Problem 2${bigger ? ", the bigger one" : ""}: customer contact`, tone: "bad",
+      text:
+        `**${fmtInt(c.cancels)}** cancellations (**${fmtPct0(c.share)}**) came from customers we could not confirm or reach for the appointment.` +
+        (f.focusSnap?.pendingPct != null ? ` Separately, **${fmtPct0(f.focusSnap.pendingPct)}** carried a ${link("Pending Customer Contact", hrefs.watchtower(month, focus.state))} signal: a different measure from the cause.` : ""),
+      evidence: { kind: "drivers", title: `${focus.state}: one primary cause per order`, interpretation: "The two problems need different owners: partner quality, and the customer appointment journey." + (f.reclassMoved ? ` Journey root-cause analysis also moves ${fmtInt(f.reclassMoved)} cancellations from Customer Miss to Company Miss.` : "") },
+    });
+  }
+
+  if (port.postPct !== null) {
+    const late = f.lateDrivers.slice(0, 3).map((r) => r.label.replace(/^Cancelled while /, "").replace(/^Customer Requested /, "").toLowerCase());
+    out.push({
+      id: "timing", mode: "observed", label: "When", tone: "bad",
+      text: `Most customers are lost late: **${fmtPct0(port.postPct)}** cancel after the ${link("due date", hrefs.postOdd(month))}${f.focusSnap?.postPct != null ? ` (**${fmtPct0(f.focusSnap.postPct)}** in ${focus.state})` : ""}${late.length ? `, led by ${listJoin(late)}` : ""}.`,
+      evidence: { kind: "timing", scope: focus.state, title: `${focus.state} cancellation timing by month`, interpretation: "The loss happens after the committed date: an appointment journey failure, not an early change of mind." },
+    });
+  }
+
   const fc = f.forecast;
-  if (!f.hasStory || fc.noAction === null) return null;
-  const total = f.interventions.total?.saves ?? null;
-  const fs = f.forecastFocus;
-  return {
-    id: "outlook", mode: "preventive", label: "October risk outlook", tone: "warn",
-    text:
-      `Without action, ${fc.month ? monthName(fc.month) : "next month"} is projected at **${fmtPct(fc.noAction)}**` +
-      (fs ? ` (${fs.state} **${fmtPct(fs.rate)}**)` : "") +
-      `. Targeted intervention brings it to about **${fmtPct(fc.intervention)}**` +
-      (total !== null ? `, protecting about **${fmtInt(total)}** orders once overlaps between the three layers are removed.` : "."),
-    evidence: {
-      kind: "forecast", title: "Cancel rate: actual, outlook and intervention",
-      interpretation: `Acting now turns a further rise into the first recovery step, back toward the ${fmtPct(fc.baseline)} internal baseline.`,
-    },
-  };
+  if (fc.noAction !== null) {
+    const FM = fc.month ? monthName(fc.month) : "Next month";
+    out.push({
+      id: "outlook", mode: "preventive", label: `${FM} outlook`, tone: "warn",
+      text: `Without action, ${FM} reaches **${fmtPct(fc.noAction)}**${f.forecastFocus ? ` (${focus.state} **${fmtPct(f.forecastFocus.rate)}**)` : ""}. With the three actions, about **${fmtPct(fc.intervention)}**: roughly **${fmtInt(f.interventions.total?.saves ?? null)}** cancellations avoided.`,
+      evidence: { kind: "forecast", title: "Cancel rate: actual, outlook and intervention", interpretation: `Acting now turns a further rise into the first recovery step, back toward ${fmtPct(fc.baseline)}.` },
+    });
+  }
+
+  const ivs = (["sales", "install", "contact"] as const).map((k) => f.interventions[k]).filter((x): x is InterventionRow => !!x);
+  if (ivs.length) {
+    out.push({
+      id: "action", mode: "preventive", label: "What to do now", tone: "warn",
+      text: `${listJoin(ivs.map((x, i) => { const v = INTERVENTION_VERB[x.kind]; return `${i === 0 ? v.charAt(0).toUpperCase() + v.slice(1) : v} (**${fmtInt(x.saves)}**)`; }))}. ${link("Take action", hrefs.actions(month))}.`,
+      evidence: { kind: "interventions", title: "Potential saves by action", interpretation: "Each order is counted once across the three actions." },
+    });
+  }
+  return out;
 }
 
-// ------------------------------------------------------------------ Command Center
 export function buildExecutiveNarrative(model: DataModel, month: MonthKey): StorySection {
   const f = storyFacts(model, month);
   const M = monthName(month);
   const { d } = f;
   let headline: string;
+  let subhead: string | undefined;
   if (!f.prev || d.cancelsMoM === null) headline = `${M}: baseline month`;
-  else if (!d.anomaly) headline = `${M} performance is in line with trend.`;
-  else if ((d.salesMoM ?? 0) <= 0) headline = `${M} cancellations rose sharply while sales declined.`;
-  else if ((d.salesMoM ?? 0) < (d.cancelsMoM ?? 0) / 3) headline = `${M} cancellations deteriorated materially despite only modest sales growth.`;
-  else headline = `${M} cancellations rose faster than sales.`;
+  else {
+    headline = `${M} cancellations ${toned(d.cancelsMoM, false)} vs Unique Sales ${toned(d.salesMoM, true)}`;
+    if (!d.anomaly) subhead = "Performance is in line with trend.";
+    else if (f.focus) {
+      const most = (f.focus.contribution ?? 0) >= 0.9 ? "almost all" : "most";
+      subhead = f.hasStory && f.drivers.sales && f.drivers.contact
+        ? `${f.focus.state} drives ${most} of it, through two problems: sales quality and customer contact.`
+        : `${f.focus.state} drives ${most} of it.`;
+    } else subhead = "Cancellations are rising faster than sales.";
+  }
 
-  const points = [
-    portfolioPoint(f), geographyPoint(f), channelPoint(f), salesQualityPoint(f), contactPoint(f), rootCausePoint(f), timingPoint(f), outlookPoint(f),
-  ].filter((p): p is NarrativePoint => !!p);
+  const points =
+    executivePoints(f) ??
+    [portfolioPoint(f), geographyPoint(f), channelPoint(f), rootCausePoint(f), timingPoint(f)].filter((p): p is NarrativePoint => !!p);
 
   return {
     id: "executive",
     eyebrow: "Executive Summary",
     headline,
+    subhead,
     status: !f.prev ? null : d.anomaly ? { label: "Exception detected", tone: "bad" } : { label: "In line with trend", tone: "good" },
     points,
   };
@@ -248,8 +310,8 @@ function changePoint(model: DataModel, month: MonthKey, scope: string, cur: Snap
   return {
     id: "change", mode: "observed", label: "What changed", tone: bad ? "bad" : "good",
     text: bad
-      ? `${name} cancellations rose **${abs(fmtSignedPct(cMoM))}** versus ${pm ? monthName(pm) : "the prior month"} while sales moved ${fmtSignedPct(sMoM)}; the cancel rate moved from ${fmtPct(prev?.cancelRate)} to **${fmtPct(cur.cancelRate)}**.`
-      : `${name} cancellations moved ${fmtSignedPct(cMoM)} against sales of ${fmtSignedPct(sMoM)}, in line with volume, at a **${fmtPct(cur.cancelRate)}** cancel rate.`,
+      ? `Cancellations {{bad:${fmtSignedPct(cMoM)}}} vs sales ${toned(sMoM, true)} against ${pm ? monthName(pm) : "the prior month"}. The cancel rate went from ${fmtPct(prev?.cancelRate)} to **${fmtPct(cur.cancelRate)}**.`
+      : `In line with trend: cancellations ${toned(cMoM, false)} vs sales ${toned(sMoM, true)}, a **${fmtPct(cur.cancelRate)}** cancel rate.`,
     evidence: { kind: "trend", scope, title: `${name} cancel rate by month`, interpretation: bad ? `${name} broke from its usual range in ${monthName(month)}.` : `${name} stayed within its usual range.` },
   };
 }
@@ -261,12 +323,11 @@ function scopeTimingPoint(month: MonthKey, scope: string, cur: Snapshot, prev: S
   const late = cur.postPct > (port.postPct ?? 1) + 0.03 || cur.postPct - (prev?.postPct ?? cur.postPct) > 0.05;
   const pending = cur.pendingPct;
   return {
-    id: "timing", mode: "observed", label: "Lifecycle timing", tone: late ? "bad" : "neutral",
+    id: "timing", mode: "observed", label: "When", tone: late ? "bad" : "neutral",
     text:
-      `**${fmtPct0(cur.postPct)}** of ${name} cancellations occur ${link("after the Original Due Date", hrefs.postOdd(month, state))}` +
-      (prev?.postPct != null ? ` (${fmtPct0(prev.postPct)} prior)` : "") +
-      `, against ${fmtPct0(port.postPct)} for the portfolio` +
-      (pending !== null ? `; ${link("Pending Customer Contact", hrefs.watchtower(month, state))} sits at **${fmtPct0(pending)}**${prev?.pendingPct != null ? ` (from ${fmtPct0(prev.pendingPct)})` : ""}.` : "."),
+      `**${fmtPct0(cur.postPct)}** cancel ${link("after the due date", hrefs.postOdd(month, state))}` +
+      (prev?.postPct != null ? ` (${fmtPct0(prev.postPct)} last month; portfolio ${fmtPct0(port.postPct)})` : ` (portfolio ${fmtPct0(port.postPct)})`) +
+      (pending !== null ? `. ${link("Pending Customer Contact", hrefs.watchtower(month, state))}: **${fmtPct0(pending)}**${prev?.pendingPct != null ? ` (from ${fmtPct0(prev.pendingPct)})` : ""}.` : "."),
     evidence: { kind: "timing", scope, title: `${name} cancellation timing`, interpretation: late ? "Customers here are lost late, after the committed date: an appointment journey problem." : "The timing mix is close to the portfolio; no late stage concentration." },
   };
 }
@@ -290,10 +351,10 @@ export function buildScopeNarrative(model: DataModel, month: MonthKey, scope: st
       const rest = rows.filter((r) => !outl.includes(r.channel)).map((r) => r.cancelRate);
       const restRange = rest.length ? ([Math.min(...(rest as number[])), Math.max(...(rest as number[]))] as [number, number]) : null;
       out.push({
-        id: "channels", mode: "observed", label: "Channel", tone: outl.length ? "bad" : "neutral",
+        id: "channels", mode: "observed", label: "Which channels", tone: outl.length ? "bad" : "neutral",
         text: outl.length
-          ? `${listJoin(outl.map((c) => channelLink(c, month)))} run at ${listJoin(outl.map((c) => `**${fmtPct(rows.find((r) => r.channel === c)?.cancelRate ?? null)}**`))}, while the other channels run ${between(restRange)}.`
-          : `Channel cancel rates sit ${between(restRange)}; no channel stands out.`,
+          ? `${listJoin(outl.map((c) => channelLink(c, month)))} cancel ${listJoin(outl.map((c) => `**${fmtPct(rows.find((r) => r.channel === c)?.cancelRate ?? null)}**`))} of sales; other channels ${between(restRange)}.`
+          : `All channels cancel ${between(restRange)} of sales; none stands out.`,
         evidence: { kind: "scope-channels", state: scope, highlight: outl, title: `${name} cancel rate by channel`, interpretation: outl.length ? `The problem is concentrated in ${listJoin(outl)}.` : "Every channel is close to the others." },
       });
     }
@@ -301,8 +362,8 @@ export function buildScopeNarrative(model: DataModel, month: MonthKey, scope: st
       const s = f.drivers.sales, c = f.drivers.contact, co = f.drivers.company;
       if (s && c) {
         out.push({
-          id: "drivers", mode: "observed", label: "Journey root-cause analysis", tone: "bad",
-          text: `Two causes: sales and agency quality (**${fmtInt(s.cancels)}**, ${fmtPct0(s.share)}) and the larger customer contact and appointment readiness problem (**${fmtInt(c.cancels)}**, ${fmtPct0(c.share)})` + (co ? `; operational causes add ${fmtPct0(co.share)}.` : "."),
+          id: "drivers", mode: "observed", label: "Why", tone: "bad",
+          text: `Two problems: sales quality (**${fmtInt(s.cancels)}**, ${fmtPct0(s.share)}) and the bigger one, customer contact (**${fmtInt(c.cancels)}**, ${fmtPct0(c.share)}).` + (co ? ` Operational causes add ${fmtPct0(co.share)}.` : ""),
           evidence: { kind: "drivers", title: `${name} primary driver attribution`, interpretation: "One primary cause per order; the two largest causes need different owners and different fixes." },
         });
       }

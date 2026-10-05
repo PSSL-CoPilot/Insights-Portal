@@ -12,18 +12,13 @@ import { listJoin } from "./links";
 import type { SceneLayout, SceneVisual, StoryModel, StoryScene } from "./types";
 import { buildExecutiveNarrative } from "./narrative";
 
+/** Sales quality risk factors used to score orders (price or offer mismatch is caught by independent confirmation). */
 const SIGNAL_LABELS = [
-  ["lowIntent", "Low intent in sales transcripts"],
-  ["promo", "Promotion dependent orders"],
-  ["competitor", "Competitor mentioned at sale"],
-  ["failedConfirm", "Failed independent confirmation"],
+  ["lowIntent", "Low intent in sales transcript"],
+  ["promo", "Promotion sensitivity"],
+  ["competitor", "Competitor mentioned"],
+  ["failedConfirm", "Price or offer mismatch (fails confirmation)"],
 ] as const;
-const SIGNAL_SHORT: Record<string, string> = {
-  "Low intent in sales transcripts": "low intent",
-  "Promotion dependent orders": "promotion dependent",
-  "Competitor mentioned at sale": "competitor mentioned",
-  "Failed independent confirmation": "failed independent confirmation",
-};
 /** Narration placement per scene: a deliberate mix so text moves around the visual. */
 const LAYOUT: Record<string, SceneLayout> = {
   portfolio: "top", geography: "right", channels: "bottom", agencies: "right", "sales-prevention": "top", split: "bottom",
@@ -98,13 +93,15 @@ export function buildStoryScenes(model: DataModel, month: MonthKey): StoryScene[
       });
 
       // 5. Preventive sales quality
-      const sig = SIGNAL_LABELS.map(([k, label]) => ({ label, value: f.signals[k] }));
+      const sig = [...SIGNAL_LABELS.map(([k, label]) => ({ label, value: f.signals[k] })), { label: "Rep risk (sales from Critical reps)", value: f.criticalRepShare }];
       if (sig.some((s) => s.value !== null)) {
         const action = model.story.exampleOrder.find((x) => /recommended action/i.test(x.label))?.value ?? f.interventions.sales?.action ?? "";
         add({
-          id: "sales-prevention", mode: "preventive", kicker: "Preventive: sales quality", duration: 10000,
-          title: `Verify risky orders before they become cancellations`,
-          body: `Across these agencies' orders: ${listJoin(sig.filter((s) => s.value !== null).map((s) => `**${fmtPct0(s.value)}** ${SIGNAL_SHORT[s.label]}`))}. Scoring every order lets risky sales be verified before installation is scheduled.`,
+          id: "sales-prevention", mode: "preventive", kicker: `${f.forecast.month ? monthName(f.forecast.month) : "Next month"} prevention: sales quality`, duration: 11000,
+          title: `Score risky orders before they become cancellations`,
+          body: f.riskyOrders.orders !== null
+            ? `Score the **${fmtInt(f.riskyOrders.orders)}** ${f.forecast.month ? monthName(f.forecast.month) : "next month"} ${listJoin(f.riskyOrders.channels)} orders on low intent, promotion sensitivity, competitor mention, price or offer mismatch and rep risk. Verify the riskiest before installation: about **${fmtInt(f.interventions.sales?.saves ?? null)}** cancellations avoided.`
+            : `Score orders on low intent, promotion sensitivity, competitor mention, price or offer mismatch and rep risk, and verify the riskiest before installation.`,
           visual: { kind: "sales-signals", signals: sig, example: model.story.exampleOrder.filter((x) => !/recommended action/i.test(x.label)), action },
         });
       }

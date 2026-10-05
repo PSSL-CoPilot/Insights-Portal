@@ -141,7 +141,7 @@ export function SceneVisualView({ visual, actions }: { visual: SceneVisual; acti
     case "sales-signals":
       return (
         <div className="grid gap-4 md:grid-cols-[1.15fr_1fr]">
-          <Panel title="Sales quality signals" tone="preventive">
+          <Panel title="Risk factors used to score orders" tone="preventive">
             <div className="space-y-4">
               {visual.signals.map((s, i) => (
                 <motion.div key={s.label} {...rise(i)}>
@@ -149,7 +149,7 @@ export function SceneVisualView({ visual, actions }: { visual: SceneVisual; acti
                     <span className="text-ink-2">{s.label}</span>
                     <span className="num-display text-[24px] leading-none">{fmtPct0(s.value)}</span>
                   </div>
-                  <Bar value={s.value} max={0.6} color={AMBER} delay={0.3 + i * 0.1} />
+                  <Bar value={s.value} max={0.7} color={AMBER} delay={0.3 + i * 0.1} />
                 </motion.div>
               ))}
             </div>

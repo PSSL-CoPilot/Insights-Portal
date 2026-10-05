@@ -38,6 +38,8 @@ export type EvidenceSpec = { title: string; interpretation: string } & (
   | { kind: "reps"; agency: string; highlight?: string }
   | { kind: "rep-signals"; rep: string }
   | { kind: "measures" }
+  | { kind: "sales-quality" }
+  | { kind: "sales-prevention" }
 );
 
 export type EvidenceKind = EvidenceSpec["kind"];
@@ -56,7 +58,10 @@ export interface NarrativePoint {
 export interface StorySection {
   id: string;
   eyebrow: string;
+  /** Quantified headline; `{{bad:…}}` and `{{good:…}}` mark coloured values. */
   headline: string;
+  /** One plain sentence under the headline. */
+  subhead?: string;
   status: { label: string; tone: StoryTone } | null;
   points: NarrativePoint[];
 }

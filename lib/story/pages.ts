@@ -24,7 +24,7 @@ export function buildCancellationsNarrative(model: DataModel, month: MonthKey, s
   const cMoM = s.cancels !== null && p?.cancels ? s.cancels / p.cancels - 1 : null;
   out.push({
     id: "volume", mode: "observed", label: "Volume", tone: (cMoM ?? 0) > 0.1 ? "bad" : "neutral",
-    text: `**${fmtInt(s.cancels)}** ${monthName(month)} cancellations in ${where} (${fmtSignedPct(cMoM)} vs ${pm ? monthName(pm) : "prior"}), a **${fmtPct(s.cancelRate)}** cancel rate${p?.cancelRate != null ? ` from ${fmtPct(p.cancelRate)}` : ""}.`,
+    text: `**${fmtInt(s.cancels)}** cancellations in ${where}, {{${(cMoM ?? 0) > 0.005 ? "bad" : (cMoM ?? 0) < -0.005 ? "good" : "neutral"}:${fmtSignedPct(cMoM)}}} vs ${pm ? monthName(pm) : "prior month"}. Cancel rate **${fmtPct(s.cancelRate)}**${p?.cancelRate != null ? ` (from ${fmtPct(p.cancelRate)})` : ""}.`,
     evidence: { kind: "trend", scope, title: `${scope ?? "Portfolio"} cancel rate by month`, interpretation: (cMoM ?? 0) > 0.1 ? "The rate broke out of its usual range this month." : "The rate is within its usual range." },
   });
   if (s.postPct !== null) {
@@ -40,7 +40,7 @@ export function buildCancellationsNarrative(model: DataModel, month: MonthKey, s
     out.push({
       id: "class", mode: "observed", label: "Who owns the miss", tone: s.custPct > 0.7 ? "bad" : "neutral",
       text: `Customer Miss is **${fmtPct0(s.custPct)}** (${fmtInt(s.custMiss)}), Company Miss ${fmtPct0(s.coPct)} and Faux ${fmtPct0(s.fauxPct)}.` +
-        (showAdj ? ` Journey root-cause analysis moves ${fmtInt(f.reclassMoved)} ${f.focus!.state} cancellations from Customer Miss to Company Miss once the evidence is reviewed.` : ""),
+        (showAdj ? ` Reviewing the journey evidence moves ${fmtInt(f.reclassMoved)} ${f.focus!.state} cancellations from Customer Miss to Company Miss.` : ""),
       evidence: { kind: "classification", scope, title: "Cancellation classification", interpretation: "Most cancellations are recorded as customer side; part of that is preceded by a Brightspeed failure." },
     });
   }
@@ -81,7 +81,7 @@ export function buildWatchtowerNarrative(model: DataModel, month: MonthKey, scop
   if (pending?.pct != null) {
     out.push({
       id: "pending", mode: "observed", label: "Leading signal", tone: "bad",
-      text: `${link("Pending Customer Contact", hrefs.watchtower(month, scope))} leads at **${fmtPct0(pending.pct)}**${prev?.pendingPct != null ? ` (${fmtPp(pending.pct - prev.pendingPct)})` : ""}, against Install in Jeopardy ${fmtPct0(s.jeopardyPct)} and BSW Delay Predicted ${fmtPct0(s.bswPct)}: a customer engagement signal, not a build one.`,
+      text: `${link("Pending Customer Contact", hrefs.watchtower(month, scope))} leads at **${fmtPct0(pending.pct)}**${prev?.pendingPct != null ? ` (${fmtPp(pending.pct - prev.pendingPct)})` : ""}. Install in Jeopardy (${fmtPct0(s.jeopardyPct)}) and BSW Delay (${fmtPct0(s.bswPct)}) stay low: a customer engagement problem, not a build one.`,
       evidence: { kind: "watch", scope, title: "Watchtower signals", interpretation: "Customer contact warnings are materially stronger than technical risk." },
     });
   }
@@ -113,7 +113,7 @@ export function buildActionsNarrative(model: DataModel, month: MonthKey): Narrat
   if (rec.items.length) {
     out.push({
       id: "layers", mode: "preventive", label: "Recommended intervention", tone: "warn",
-      text: `Three prevention layers answer the two ${monthName(month)} problems: ${listJoin(rec.items.map((r) => `${r.label.toLowerCase()} (**${fmtInt(r.saves)}**)`))}${rec.dedup !== null ? `, about **${fmtInt(rec.dedup)}** orders counted once per order.` : "."}`,
+      text: `Three actions answer the two ${monthName(month)} problems: ${listJoin(rec.items.map((r) => `${r.label.toLowerCase()} (**${fmtInt(r.saves)}**)`))}.${rec.dedup !== null ? ` About **${fmtInt(rec.dedup)}** cancellations avoided, each order counted once.` : ""}`,
       evidence: { kind: "interventions", title: "Potential saves by intervention", interpretation: "Customer-contact rescue is the largest lever; sales quality verification is the fastest to start." },
     });
   }
@@ -128,14 +128,14 @@ export function buildActionsNarrative(model: DataModel, month: MonthKey): Narrat
   if (crit.length) {
     out.push({
       id: "priority", mode: "preventive", label: "Priorities", tone: "neutral",
-      text: `${crit.length} Critical ${crit.length > 1 ? "actions" : "action"} to start first: ${listJoin(crit.map((a) => `**${a.title}** (${a.owner})`))}.`,
+      text: `Start with: ${listJoin(crit.map((a) => `**${a.title}** (${a.owner})`))}.`,
     });
   }
   if (model.story.measures.length && f.hasStory) {
     const m = model.story.measures.slice(0, 3);
     out.push({
       id: "measures", mode: "preventive", label: "How we will know it is working", tone: "neutral",
-      text: `Targets: ${listJoin(m.map((x) => `${x.measure} from ${x.actual} to **${x.target}**`))}.`,
+      text: `${listJoin(m.map((x) => `${x.measure} from ${x.actual} to **${x.target}**`))}.`,
       evidence: { kind: "measures", title: "Success measures", interpretation: "Leading and lagging measures tracked weekly against the baseline month." },
     });
   }

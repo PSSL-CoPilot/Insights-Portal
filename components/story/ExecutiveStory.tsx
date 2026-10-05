@@ -7,7 +7,7 @@ import { ArrowDown, ArrowRight, Play, Zap } from "lucide-react";
 import { GenieMark } from "../ui/Marks";
 import { useApp } from "../AppContext";
 import { firstName, useProfile } from "../profile";
-import { Badge, Card } from "../ui/primitives";
+import { Badge, Card, RichText } from "../ui/primitives";
 import { Sparkline } from "../ui/Sparkline";
 import { NarrativeList } from "./NarrativeList";
 import { ActionsDrawer } from "./ActionsDrawer";
@@ -67,10 +67,11 @@ export function ExecutiveStory() {
               )}
             </div>
 
-            <h2 id="exec-summary" className="mt-6 max-w-4xl text-[30px] font-medium leading-[1.12] tracking-[-0.03em] sm:text-[40px]">
+            <h2 id="exec-summary" className="mt-6 max-w-4xl text-balance text-[30px] font-medium leading-[1.12] tracking-[-0.03em] sm:text-[40px]">
               <span className="bs-gradient-text block pb-1">Hey {firstName(profile.name) || "there"},</span>
-              {story.headline}
+              <RichText text={story.headline} />
             </h2>
+            {story.subhead && <p className="mt-3 max-w-3xl text-[17px] leading-relaxed text-ink-2 sm:text-[19px]">{story.subhead}</p>}
 
             <NarrativeList points={story.points} resetKey={month} className="mt-8" />
 

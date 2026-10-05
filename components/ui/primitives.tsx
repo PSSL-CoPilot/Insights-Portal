@@ -142,13 +142,22 @@ export function Tabs<T extends string>({
   );
 }
 
-/** Renders `**bold**` markers as emphasised spans and `[[label|href]]` as subtle inline entity links. */
+const TONE_TEXT: Record<string, string> = { bad: "text-bad", good: "text-good", warn: "text-warn", teal: "text-teal", neutral: "text-ink" };
+
+/**
+ * Renders `**bold**` markers as emphasised spans, `[[label|href]]` as subtle inline entity links and
+ * `{{bad:+36%}}` / `{{good:+5%}}` as coloured values (red for deterioration, green for improvement).
+ */
 export function RichText({ text, className, linkClassName }: { text: string; className?: string; linkClassName?: string }) {
-  const parts = text.split(/(\*\*[^*]+\*\*|\[\[[^\]|]+\|[^\]]+\]\])/g).filter(Boolean);
+  const parts = text.split(/(\*\*[^*]+\*\*|\[\[[^\]|]+\|[^\]]+\]\]|\{\{(?:bad|good|warn|teal|neutral):[^}]+\}\})/g).filter(Boolean);
   return (
     <span className={className}>
       {parts.map((p, i) => {
         if (p.startsWith("**")) return <strong key={i} className="font-semibold text-ink">{p.slice(2, -2)}</strong>;
+        if (p.startsWith("{{")) {
+          const [tone, value] = p.slice(2, -2).split(/:(.*)/s);
+          return <span key={i} className={cn("num font-semibold", TONE_TEXT[tone])}>{value}</span>;
+        }
         if (p.startsWith("[[")) {
           const [label, href] = p.slice(2, -2).split("|");
           return (
@@ -171,7 +180,7 @@ export function RichText({ text, className, linkClassName }: { text: string; cla
 }
 
 /** Strips RichText markup, for aria labels and plain text contexts. */
-export const plainText = (t: string) => t.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\[\[([^\]|]+)\|[^\]]+\]\]/g, "$1");
+export const plainText = (t: string) => t.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\[\[([^\]|]+)\|[^\]]+\]\]/g, "$1").replace(/\{\{\w+:([^}]+)\}\}/g, "$1");
 
 export function EmptyState({ title, children, icon }: { title: string; children?: ReactNode; icon?: ReactNode }) {
   return (

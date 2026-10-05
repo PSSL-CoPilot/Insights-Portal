@@ -52,7 +52,14 @@ const saves = actions.reduce((a, x) => a + (x.saves ?? 0), 0);
 check(saves === layers, `action saves (${saves}) equal the three prevention layers, each counted once`);
 const scenes = buildStoryScenes(m, month);
 const ov = buildOverviewNarrative(m, month);
-check(ov.some((p) => p.id === "problem-sales") && ov.some((p) => p.id === "problem-contact"), "Detailed Analysis overview names both September problems");
+check(ov.some((p) => p.id === "sales-quality") && ov.some((p) => p.id === "contact"), "Detailed Analysis overview names both September problems");
+const ids = ex.points.map((p) => p.id);
+check(JSON.stringify(ids) === JSON.stringify(["portfolio", "geography", "channel", "sales-quality", "sales-prevention", "contact", "timing", "outlook", "action"]), `story order: ${ids.join(" > ")}`);
+check(ex.points[ids.indexOf("sales-prevention")]?.mode === "preventive" && ex.points[ids.indexOf("sales-quality")]?.mode === "observed", "sales quality prevention follows the problem and is marked forward-looking");
+check(/\{\{bad:\+36%\}\}/.test(ex.headline) && /\{\{good:\+5%\}\}/.test(ex.headline), `quantified headline: ${ex.headline}`);
+const sp = ex.points.find((p) => p.id === "sales-prevention")!;
+check(sp.text.includes("6,700") && sp.text.includes("**500**") && f.riskyOrders.projected === 3422, "October sales quality prevention uses the forecast orders (6,700; 3,422 projected) and the 500 saves");
+check(ex.points.find((p) => p.id === "sales-quality")?.evidence?.kind === "sales-quality", "sales quality insight carries agency and representative evidence");
 check(scenes.length === 12, `player builds ${scenes.length} scenes (expected 12)`);
 const allText = [
   ex.headline, exText, ...ex.points.map((p) => `${p.label} ${p.evidence?.title ?? ""} ${p.evidence?.interpretation ?? ""}`),

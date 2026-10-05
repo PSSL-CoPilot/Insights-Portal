@@ -191,7 +191,102 @@ function EvidenceBody({ spec }: { spec: EvidenceSpec }) {
       return <RepSignals model={model} rep={spec.rep} />;
     case "measures":
       return <MeasuresTable />;
+    case "sales-quality":
+      return <SalesQualityEvidence />;
+    case "sales-prevention":
+      return <SalesPreventionEvidence />;
   }
+}
+
+/** Agencies against their own history, then the representatives behind the loss. */
+function SalesQualityEvidence() {
+  const { model, month } = useApp();
+  const router = useRouter();
+  const f = storyFacts(model, month);
+  const ag = [...model.story.agencies].sort((a, b) => (b.gap ?? 0) - (a.gap ?? 0));
+  if (!ag.length) return <Unavailable text="Agency detail is not available in the workbook." />;
+  const weak = new Set(f.weakAgencies.map((a) => a.agency));
+  const reps = model.story.reps.filter((r) => weak.has(r.agency));
+  const crit = reps.filter((r) => /critical/i.test(r.band));
+  const max = Math.max(...ag.map((a) => a.cancelRate ?? 0)) * 1.05;
+  return (
+    <div className="space-y-5">
+      <div>
+        <div className="mb-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-mute">Agencies vs own history</div>
+        <RankedBars dense max={max} rows={ag.map((a) => {
+          const hi = weak.has(a.agency);
+          return {
+            id: a.agency, label: a.agency, sub: `${a.channel} · history ${fmtPct(a.baseline)}`, value: a.cancelRate, valueLabel: fmtPct(a.cancelRate),
+            chip: a.gap !== null ? { text: fmtPp(a.gap), tone: hi ? "bad" : "neutral" } : undefined, color: hi ? C.bad : C.slate, emphasis: hi,
+            onClick: () => router.push(analysisHref({ agency: a.agency }, month)),
+          };
+        })} />
+      </div>
+      <div>
+        <div className="mb-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-mute">Riskiest representatives</div>
+        <RepRanking reps={reps} limit={8} onSelect={(id) => router.push(analysisHref({ rep: id }, month))} />
+        <p className="mt-2 px-3 text-[12px] text-mute">
+          <strong className="text-ink">{crit.length} of {reps.length}</strong> representatives in these agencies are in the Critical band (above 40%), making <strong className="text-ink">{fmtPct0(f.criticalRepShare)}</strong> of their sales.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** October prevention: score risky orders on the sales quality factors, then the targeted action and saves. */
+function SalesPreventionEvidence() {
+  const { model, month } = useApp();
+  const f = storyFacts(model, month);
+  const ro = f.riskyOrders;
+  const iv = f.interventions.sales;
+  const sg = f.signals;
+  const factors = [
+    { label: "Low intent in sales transcript", v: sg.lowIntent },
+    { label: "Promotion sensitivity", v: sg.promo },
+    { label: "Competitor mentioned", v: sg.competitor },
+    { label: "Price or offer mismatch (fails independent confirmation)", v: sg.failedConfirm },
+    { label: "Rep risk (sales from Critical reps)", v: f.criticalRepShare },
+  ];
+  const example = model.story.exampleOrder;
+  if (ro.orders === null) return <Unavailable text="The October outlook is not available in the workbook." />;
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl bg-card p-4 shadow-card"><div className="num-display text-[30px] leading-none">{fmtInt(ro.orders)}</div><div className="mt-1.5 text-[12px] text-mute">{f.forecast.month ? monthName(f.forecast.month) : "Next month"} {ro.channels.join(" and ")} orders to score</div></div>
+        <div className="rounded-2xl bg-card p-4 shadow-card"><div className="num-display text-[30px] leading-none text-bad">{fmtInt(ro.projected)}</div><div className="mt-1.5 text-[12px] text-mute">projected to cancel without action ({fmtPct0(ro.rate)})</div></div>
+        <div className="rounded-2xl bg-teal p-4 text-white shadow-card dark:text-[#06201f]"><div className="num-display text-[30px] leading-none">{fmtInt(iv?.saves ?? null)}</div><div className="mt-1.5 text-[12px] opacity-90">cancellations avoided by verifying risky orders</div></div>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
+        <div>
+          <div className="mb-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-mute">Risk factors in these agencies' orders</div>
+          <div className="space-y-3">
+            {factors.map((x, i) => (
+              <div key={x.label}>
+                <div className="mb-1 flex items-baseline justify-between gap-3 text-[13px]"><span className="text-ink-2">{x.label}</span><span className="num font-semibold">{fmtPct0(x.v)}</span></div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-line-2">
+                  <motion.div className="h-full w-full rounded-full" style={{ background: TEAL, transformOrigin: "0 50%" }} initial={{ scaleX: 0 }} animate={{ scaleX: Math.min(1, (x.v ?? 0) / 0.7) }} transition={{ duration: 0.8, delay: 0.1 + i * 0.08, ease: [0.2, 0.8, 0.2, 1] }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {example.length > 0 && (
+          <div className="rounded-2xl border border-teal/25 bg-card p-4">
+            <div className="mb-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-teal">Example scored order</div>
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12.5px]">
+              {example.map((e) => (
+                <div key={e.label} className="contents">
+                  <dt className="text-mute">{e.label}</dt>
+                  <dd className={/recommended/i.test(e.label) ? "text-right font-semibold text-teal" : "text-right font-semibold"}>{e.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+      </div>
+      {iv && <div className="rounded-2xl bg-teal-soft px-4 py-3 text-[13px] text-teal"><strong>Targeted action:</strong> {iv.action}.</div>}
+    </div>
+  );
 }
 
 function MeasuresTable() {

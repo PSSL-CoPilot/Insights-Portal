@@ -59,6 +59,10 @@ export interface StoryFacts {
   forecastOthers: [number, number] | null;
   interventions: Partial<Record<InterventionRow["kind"], InterventionRow>>;
   contactRisk: { orders: number | null; projected: number | null; protectable: number | null };
+  /** Next month orders in the outlier channels of the focus state: the population the sales quality score runs on. */
+  riskyOrders: { channels: string[]; orders: number | null; projected: number | null; rate: number | null };
+  /** Share of the deteriorating agencies' sales made by Critical band representatives. */
+  criticalRepShare: number | null;
 }
 
 const cache = new WeakMap<DataModel, Map<MonthKey, StoryFacts>>();
@@ -156,12 +160,22 @@ export function storyFacts(model: DataModel, month: MonthKey): StoryFacts {
     forecastFocus,
     forecastOthers: hasStory ? range(st.forecastStates.filter((r) => !r.isTotal && r.state !== focus!.state).map((r) => r.rate)) : null,
     interventions,
+    riskyOrders: { channels: [], orders: null, projected: null, rate: null },
+    criticalRepShare: null,
     contactRisk: {
       orders: hasStory ? st.contactRisk[0]?.value ?? null : null,
       projected: hasStory ? st.contactRisk[1]?.value ?? null : null,
       protectable: hasStory ? st.contactRisk[2]?.value ?? null : null,
     },
   };
+  if (hasStory) {
+    const rows = st.forecastChannels.filter((r) => !r.isTotal && outlierChannels.some((c) => c.channel === r.channel));
+    const orders = rows.reduce((a, r) => a + (r.sales ?? 0), 0), projected = rows.reduce((a, r) => a + (r.cancels ?? 0), 0);
+    f.riskyOrders = { channels: rows.map((r) => r.channel), orders: rows.length ? orders : null, projected: rows.length ? projected : null, rate: orders ? projected / orders : null };
+    const reps = st.reps.filter((r) => weakNames.has(r.agency));
+    const total = reps.reduce((a, r) => a + (r.sales ?? 0), 0);
+    f.criticalRepShare = total ? reps.filter((r) => /critical/i.test(r.band)).reduce((a, r) => a + (r.sales ?? 0), 0) / total : null;
+  }
   byMonth.set(month, f);
   return f;
 }

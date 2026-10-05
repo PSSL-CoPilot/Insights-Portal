@@ -7,7 +7,7 @@ import type { AgencySnapshotRow, DataModel, MonthKey, RepRow } from "../data/typ
 import { AGENCY_GAP_THRESHOLD, chScope, getSnapshot } from "../data/metrics";
 import { fmtInt, fmtPct, fmtPct0, fmtPp, monthName } from "../format";
 import { storyFacts } from "./facts";
-import { buildPlanNarrative, buildScopeNarrative } from "./narrative";
+import { buildExecutiveNarrative, buildPlanNarrative, buildScopeNarrative } from "./narrative";
 import { agencyLink, channelLink, hrefs, link, listJoin, repLink, stateLink, type Selection } from "./links";
 import type { NarrativePoint } from "./types";
 
@@ -31,6 +31,8 @@ export function steadySignals(model: DataModel) {
 // ------------------------------------------------------------------ overview: the two problems
 export function buildOverviewNarrative(model: DataModel, month: MonthKey): NarrativePoint[] {
   const f = storyFacts(model, month);
+  // Same continuous story as the Command Center, so both pages tell it the same way.
+  if (f.hasStory && f.focus && f.d.anomaly) return buildExecutiveNarrative(model, month).points;
   const plan = buildPlanNarrative(model, month);
   if (!f.hasStory || !f.focus) return plan;
   const out: NarrativePoint[] = plan.filter((p) => p.id === "geography" || p.id === "channels");
@@ -72,15 +74,14 @@ export function buildStateChannelNarrative(model: DataModel, month: MonthKey, st
   const out: NarrativePoint[] = [{
     id: "pair", mode: "observed", label: `${state} · ${channel}`, tone: (row.cancelRate ?? 0) > 0.25 ? "bad" : "neutral",
     text:
-      `${channelLink(channel, month)} in ${stateLink(state, month)} cancelled **${fmtPct(row.cancelRate)}** of ${fmtInt(row.sales)} sales (${fmtInt(row.cancels)} cancellations)` +
-      (elsewhere.length ? `, against ${between(Math.min(...elsewhere), Math.max(...elsewhere))} for ${channel} in other states` : "") +
-      (siblings.length ? ` and ${between(Math.min(...siblings), Math.max(...siblings))} for other ${state} channels.` : "."),
+      `${channelLink(channel, month)} in ${stateLink(state, month)} cancelled **${fmtPct(row.cancelRate)}** of ${fmtInt(row.sales)} sales (${fmtInt(row.cancels)} cancellations).` +
+      (elsewhere.length ? ` ${channel} in other states: ${fmtPct0(Math.min(...elsewhere))} to ${fmtPct0(Math.max(...elsewhere))}.` : ""),
     evidence: { kind: "scope-channels", state, highlight: [channel], title: `${state} cancel rate by channel`, interpretation: `${channel} is ${(row.cancelRate ?? 0) > Math.max(...siblings, 0) + 0.08 ? "the outlier" : "in line with the other channels"} inside ${state}.` },
   }];
   if (row.postPct !== null || row.pendingPct !== null) {
     out.push({
-      id: "pair-timing", mode: "observed", label: "Lifecycle timing", tone: (row.postPct ?? 0) > 0.6 ? "bad" : "neutral",
-      text: `**${fmtPct0(row.postPct)}** of these cancellations came after the Original Due Date; Customer Miss is ${fmtPct0(row.custPct)} and ${fmtPct0(row.pendingPct)} carried Pending Customer Contact.`,
+      id: "pair-timing", mode: "observed", label: "When", tone: (row.postPct ?? 0) > 0.6 ? "bad" : "neutral",
+      text: `**${fmtPct0(row.postPct)}** cancel after the due date. Customer Miss ${fmtPct0(row.custPct)}; Pending Customer Contact ${fmtPct0(row.pendingPct)}.`,
       evidence: { kind: "timing", scope: state, title: `${state} cancellation timing`, interpretation: "The timing split is recorded at state level; the pair follows the same late stage pattern." },
     });
   }
@@ -90,7 +91,7 @@ export function buildStateChannelNarrative(model: DataModel, month: MonthKey, st
     out.push({
       id: "pair-agencies", mode: "observed", label: "Sales quality analysis", tone: weak.length ? "bad" : "neutral",
       text: weak.length
-        ? `${listJoin(weak.map((a) => `${agencyLink(a.agency, month)} (${fmtPct0(a.baseline)} history to **${fmtPct(a.cancelRate)}**)`))} ${weak.length > 1 ? "drive" : "drives"} the deterioration.`
+        ? `${listJoin(weak.map((a) => `${agencyLink(a.agency, month)} (${fmtPct(a.baseline)} history, now **${fmtPct(a.cancelRate)}**)`))} ${weak.length > 1 ? "drive" : "drives"} it.`
         : `${listJoin(ag.map((a) => agencyLink(a.agency, month)))} stayed near ${ag.length > 1 ? "their" : "its"} own history.`,
       evidence: { kind: "agencies", highlight: ag.map((a) => a.agency), title: `${state} agencies vs own history`, interpretation: weak.length ? "Partner quality, not the channel itself, explains the movement." : "No partner broke from its own baseline." },
     });
@@ -114,14 +115,14 @@ export function buildAgencyNarrative(model: DataModel, month: MonthKey, a: Agenc
   const out: NarrativePoint[] = [{
     id: "agency-change", mode: "observed", label: `${a.agency} · ${a.channel}`, tone: weak ? "bad" : "good",
     text: weak
-      ? `${a.agency} cancelled **${fmtPct(a.cancelRate)}** of ${fmtInt(a.sales)} ${monthName(month)} sales against its own January to ${P ? monthName(P) : "prior"} history of ${fmtPct(a.baseline)}: **${fmtPp(a.gap)}**, while volume moved from ${fmtInt(a.prevSales)} to ${fmtInt(a.sales)} sales.`
-      : `${a.agency} cancelled ${fmtPct(a.cancelRate)} of ${fmtInt(a.sales)} sales, close to its own history of ${fmtPct(a.baseline)} (${fmtPp(a.gap)}): performing normally.`,
+      ? `Cancel rate **${fmtPct(a.cancelRate)}** in ${monthName(month)}, against its own history of ${fmtPct(a.baseline)} (**${fmtPp(a.gap)}**). Sales went from ${fmtInt(a.prevSales)}${P ? ` in ${monthName(P)}` : ""} to ${fmtInt(a.sales)}.`
+      : `Performing normally: ${fmtPct(a.cancelRate)} cancel rate, close to its own history of ${fmtPct(a.baseline)} (${fmtPp(a.gap)}).`,
     evidence: { kind: "agency-trend", agency: a.agency, title: `${a.agency} cancel rate by month vs own history`, interpretation: weak ? `The rate tracked its own baseline until ${monthName(month)}, then broke away.` : "The rate stays inside its own historical range." },
   }];
   if (a.pattern || a.disposition) {
     out.push({
       id: "agency-pattern", mode: "observed", label: "Sales quality analysis", tone: weak ? "bad" : "neutral",
-      text: `Partner disposition **${a.disposition || "n/a"}**${a.pattern ? `; main pattern: ${a.pattern.toLowerCase()}.` : "."}`,
+      text: `Rated **${a.disposition || "n/a"}**.${a.pattern ? ` Main pattern: ${a.pattern.toLowerCase()}.` : ""}`,
       evidence: a.lowIntent !== null ? { kind: "agency-signals", agency: a.agency, title: `${a.agency} order quality signals vs steady agencies`, interpretation: weak ? "Order quality signals run well above the agencies that stayed on their baseline." : "Signals are in line with the steady agencies." } : undefined,
     });
   }
@@ -151,7 +152,7 @@ export function buildAgencyNarrative(model: DataModel, month: MonthKey, a: Agenc
     const iv = st.interventions.find((i) => i.kind === "sales");
     out.push({
       id: "agency-outlook", mode: "preventive", label: "Recommended intervention", tone: "warn",
-      text: `Without action, ${monthName(st.forecastMonth)} ${st.focusState ?? ""} ${a.channel} is projected at **${fmtPct(fc.rate)}**. ${iv ? `Sales quality verification (${iv.action.toLowerCase()}) targets about **${fmtInt(iv.saves)}** saves across the deteriorating partners.` : ""} ${link("Take action", hrefs.actions(month))}.`,
+      text: `Without action, ${monthName(st.forecastMonth)} ${st.focusState ?? ""} ${a.channel} reaches **${fmtPct(fc.rate)}**. ${iv ? `Verifying risky orders and coaching Critical reps can avoid about **${fmtInt(iv.saves)}** cancellations across these partners.` : ""} ${link("Take action", hrefs.actions(month))}.`,
       evidence: { kind: "forecast-scope", scope: chScope(a.channel), title: `${st.focusState ?? ""} channel outlook`, interpretation: "Verifying risky orders from Critical representatives is the first lever for this partner." },
     });
   }
@@ -171,8 +172,8 @@ export function buildRepNarrative(model: DataModel, month: MonthKey, r: RepRow):
   }];
   out.push({
     id: "rep-compare", mode: "observed", label: "Against peers", tone: (r.rate ?? 0) > (a?.cancelRate ?? 1) ? "bad" : "good",
-    text: `${r.agency} overall runs at ${fmtPct(a?.cancelRate ?? null)}${cohort ? ` and its cohort (${cohort.cohort}) at ${fmtPct(cohort.rate)}` : ""}; ${(r.rate ?? 0) > (a?.cancelRate ?? 1) ? "this representative is above both." : "this representative is at or below the agency level."}` +
-      ((r.prevSales ?? 0) > 0 ? ` In the prior month: ${fmtInt(r.prevCancels)} cancellations on ${fmtInt(r.prevSales)} sales.` : " No sales in the prior month (new in the period)."),
+    text: `${r.agency} runs at ${fmtPct(a?.cancelRate ?? null)}${cohort ? ` and this cohort at ${fmtPct(cohort.rate)}` : ""}; ${(r.rate ?? 0) > (a?.cancelRate ?? 1) ? "this rep is above both." : "this rep is at or below the agency."}` +
+      ((r.prevSales ?? 0) > 0 ? ` Last month: ${fmtInt(r.prevCancels)} cancellations on ${fmtInt(r.prevSales)} sales.` : " New this month."),
   });
   if (r.lowIntent !== null) {
     const ref = steadySignals(model);
@@ -185,7 +186,7 @@ export function buildRepNarrative(model: DataModel, month: MonthKey, r: RepRow):
   if (crit || /high/i.test(r.band)) {
     out.push({
       id: "rep-action", mode: "preventive", label: "Recommended intervention", tone: "warn",
-      text: `Verify this representative's orders independently before installation is scheduled and coach on expectation setting; the ${r.band} band makes these orders the first candidates for ${link("sales quality verification", hrefs.actions(month))}.`,
+      text: `Verify this rep's orders before installation and coach on expectation setting. ${r.band} reps are first in line for ${link("sales quality verification", hrefs.actions(month))}.`,
     });
   }
   return out;
